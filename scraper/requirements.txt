@@ -1,0 +1,31 @@
+# =============================================================================
+# NEWS PULSE — Python Dependencies
+# =============================================================================
+# Install all with:  pip install -r requirements.txt
+# =============================================================================
+
+# --- RSS Feed Parsing ---
+feedparser==6.0.11          # Parses RSS and Atom feeds from BBC, Reuters, NPR
+
+# --- Article Text Extraction ---
+trafilatura==1.12.0         # Primary full-text extractor (best accuracy)
+newspaper3k==0.2.8          # Fallback extractor if trafilatura fails
+
+# --- NLP / Machine Learning ---
+scikit-learn==1.4.2         # TF-IDF vectorizer + cosine similarity
+nltk==3.8.1                 # Stopwords, tokenization, lemmatization
+numpy==1.26.4               # Required by scikit-learn
+
+# --- Database ---
+psycopg2-binary==2.9.9      # PostgreSQL driver (binary = no compile needed)
+
+# --- Environment Variables ---
+python-dotenv==1.0.1        # Loads .env file into os.environ
+
+# --- HTTP Requests ---
+requests==2.31.0            # HTTP client for fetching articles
+urllib3==2.2.1              # Used internally by requests
+
+# --- Utilities ---
+python-dateutil==2.9.0      # Smart date parsing from RSS feeds
+hashlib-additional==0.0.1   # SHA-256 URL hashing (already in stdlib, just docs)
