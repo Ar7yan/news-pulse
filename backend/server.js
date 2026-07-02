@@ -1,14 +1,6 @@
 // =============================================================================
 // server.js — HTTP Server Entry Point
 // =============================================================================
-// This is the ONLY file that starts the HTTP server.
-// It imports the configured Express app from app.js
-// and tells it to listen on a port.
-//
-// Run with:
-//   node server.js        (production)
-//   npm run dev           (development with nodemon auto-restart)
-// =============================================================================
 
 require('dotenv').config();
 
@@ -27,18 +19,49 @@ async function startServer() {
   logger.info('  NEWS PULSE API STARTING');
   logger.info('================================================');
 
-  // Test database connection before accepting traffic
+  // Log environment info for debugging
+  logger.info(`Node version: ${process.version}`);
+  logger.info(`Environment:  ${process.env.NODE_ENV || 'development'}`);
+  logger.info(`Port:         ${PORT}`);
+  logger.info(`Database URL: ${process.env.DATABASE_URL ? 'SET ✓' : 'NOT SET ✗'}`);
+
+  // Log partial URL for debugging (hide password)
+  if (process.env.DATABASE_URL) {
+    try {
+      const url    = new URL(process.env.DATABASE_URL);
+      logger.info(`DB Host:      ${url.hostname}`);
+      logger.info(`DB Port:      ${url.port}`);
+      logger.info(`DB User:      ${url.username}`);
+      logger.info(`DB Name:      ${url.pathname.replace('/', '')}`);
+    } catch (e) {
+      logger.warn('Could not parse DATABASE_URL for logging');
+    }
+  }
+
+  // Test database connection
   logger.info('Testing database connection...');
   const dbConnected = await testConnection();
 
   if (!dbConnected) {
-    logger.error('Cannot start server — database connection failed');
-    logger.error('Check DATABASE_URL in backend/.env');
-    process.exit(1);
+    // Log warning but still start server
+    // This way we can see the health endpoint and debug
+    logger.error('================================================');
+    logger.error('  DATABASE CONNECTION FAILED!');
+    logger.error('  Check DATABASE_URL environment variable');
+    logger.error('================================================');
+
+    // In production exit — no point running without DB
+    if (process.env.NODE_ENV === 'production') {
+      logger.error('Exiting in production mode — fix DATABASE_URL');
+      process.exit(1);
+    }
+  } else {
+    logger.info('Database connection successful ✓');
   }
 
-  // Start listening
+  // Start HTTP server
   const server = app.listen(PORT, () => {
+    logger.info('================================================');
     logger.info(`Server running on http://localhost:${PORT}`);
     logger.info(`Environment: ${process.env.NODE_ENV || 'development'}`);
     logger.info('');
@@ -55,8 +78,6 @@ async function startServer() {
 
   // =============================================================================
   // Graceful Shutdown
-  // When the process gets SIGTERM (from Docker/Render stopping the container),
-  // finish existing requests before shutting down.
   // =============================================================================
   process.on('SIGTERM', () => {
     logger.info('SIGTERM received — shutting down gracefully');
@@ -76,9 +97,24 @@ async function startServer() {
 
   // Handle unhandled promise rejections
   process.on('unhandledRejection', (reason, promise) => {
-    logger.error('Unhandled Promise Rejection:', reason);
+    logger.error('Unhandled Promise Rejection:');
+    logger.error(reason);
+  });
+
+  // Handle uncaught exceptions
+  process.on('uncaughtException', (err) => {
+    logger.error('Uncaught Exception:');
+    logger.error(err.message);
+    logger.error(err.stack);
+    process.exit(1);
   });
 }
 
 
-startServer();
+// =============================================================================
+// Run
+// =============================================================================
+startServer().catch(err => {
+  console.error('Fatal error starting server:', err);
+  process.exit(1);
+});

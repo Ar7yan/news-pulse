@@ -3,56 +3,71 @@ require('dotenv').config();
 
 const logger = require('../middleware/logger');
 
-// -----------------------------------------------------------------------------
-// Parse connection string to force IPv4
-// Render has issues with IPv6 Supabase connections
-// -----------------------------------------------------------------------------
-function getPoolConfig() {
-  const connectionString = process.env.DATABASE_URL;
+// Parse the connection string and add required options
+function buildConnectionConfig() {
+  const url = process.env.DATABASE_URL;
 
-  if (!connectionString) {
-    throw new Error('DATABASE_URL environment variable is not set!');
+  if (!url) {
+    throw new Error('DATABASE_URL is not set!');
+  }
+
+  // Log which host we're connecting to (hide password)
+  try {
+    const parsed = new URL(url);
+    logger.info(`Connecting to: ${parsed.hostname}:${parsed.port}`);
+    logger.info(`Database: ${parsed.pathname}`);
+    logger.info(`Username: ${parsed.username}`);
+  } catch(e) {
+    logger.info('Connecting to database...');
   }
 
   return {
-    connectionString,
-
-    // Force SSL — required for Supabase on Render
+    connectionString: url,
     ssl: {
       rejectUnauthorized: false,
     },
-
-    // Pool settings — conservative for free tier
-    max                    : 5,
+    // Smaller pool for free tier
+    max                    : 3,
     min                    : 0,
     idleTimeoutMillis      : 10000,
-    connectionTimeoutMillis: 10000,
+    connectionTimeoutMillis: 15000,
     allowExitOnIdle        : true,
-  }
+  };
 }
 
-const pool = new Pool(getPoolConfig());
+let pool;
+
+try {
+  pool = new Pool(buildConnectionConfig());
+} catch (err) {
+  logger.error(`Failed to create pool: ${err.message}`);
+  process.exit(1);
+}
 
 pool.on('error', (err) => {
-  logger.error('Unexpected database pool error:', err.message);
+  logger.error(`Pool error: ${err.message}`);
 });
 
 // -----------------------------------------------------------------------------
-// Test connection
+// Test connection — uses a single client not pool
 // -----------------------------------------------------------------------------
 async function testConnection() {
   let client;
   try {
     client = await pool.connect();
-    const result = await client.query('SELECT NOW() as time');
-    logger.info(`Database connected — server time: ${result.rows[0].time}`);
+    const result = await client.query('SELECT NOW() as time, version() as version');
+    logger.info(`Database connected!`);
+    logger.info(`Server time: ${result.rows[0].time}`);
     return true;
   } catch (err) {
     logger.error(`Database connection failed: ${err.message}`);
-    logger.error('Check your DATABASE_URL environment variable');
+    logger.error(`Error code: ${err.code}`);
+    logger.error(`Full error: ${JSON.stringify(err)}`);
     return false;
   } finally {
-    if (client) client.release();
+    if (client) {
+      try { client.release(); } catch(e) {}
+    }
   }
 }
 
@@ -60,25 +75,22 @@ async function testConnection() {
 // Query function
 // -----------------------------------------------------------------------------
 async function query(text, params) {
-  const start = Date.now();
   let client;
+  const start = Date.now();
 
   try {
     client = await pool.connect();
     const result = await client.query(text, params);
-    const duration = Date.now() - start;
-
-    if (duration > 1000) {
-      logger.warn(`Slow query (${duration}ms): ${text.slice(0, 100)}`);
-    }
-
+    const ms = Date.now() - start;
+    if (ms > 1000) logger.warn(`Slow query ${ms}ms: ${text.slice(0,80)}`);
     return result;
-
   } catch (err) {
     logger.error(`Query error: ${err.message}`);
     throw err;
   } finally {
-    if (client) client.release();
+    if (client) {
+      try { client.release(); } catch(e) {}
+    }
   }
 }
 
@@ -87,7 +99,6 @@ async function query(text, params) {
 // -----------------------------------------------------------------------------
 async function withTransaction(callback) {
   const client = await pool.connect();
-
   try {
     await client.query('BEGIN');
     const result = await callback(client);
@@ -95,16 +106,10 @@ async function withTransaction(callback) {
     return result;
   } catch (err) {
     await client.query('ROLLBACK');
-    logger.error(`Transaction rolled back: ${err.message}`);
     throw err;
   } finally {
-    client.release();
+    try { client.release(); } catch(e) {}
   }
 }
 
-module.exports = {
-  query,
-  withTransaction,
-  testConnection,
-  pool,
-};
+module.exports = { query, withTransaction, testConnection, pool };
