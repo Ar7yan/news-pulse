@@ -37,16 +37,33 @@ const app = express();
 // =============================================================================
 
 // 1. CORS — Allow frontend to call this API
+const allowedOrigins = [
+  process.env.FRONTEND_URL,
+  'http://localhost:3000',
+  'http://localhost:3001',
+  'https://news-pulse-mu-nine.vercel.app',
+  'https://news-pulse-ar7yan.vercel.app',
+].filter(Boolean);
+
 app.use(cors({
-  origin: [
-    process.env.FRONTEND_URL || 'http://localhost:3000',
-    'http://localhost:3000',
-    'http://localhost:3001',
-  ],
-  methods         : ['GET', 'POST', 'OPTIONS'],
-  allowedHeaders  : ['Content-Type', 'Authorization'],
-  credentials     : true,
+  origin: function(origin, callback) {
+    // allow requests without origin (Postman, curl)
+    if (!origin) return callback(null, true);
+
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+
+    return callback(
+      new Error(`CORS blocked for origin: ${origin}`)
+    );
+  },
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true,
 }));
+
+app.options('*', cors());
 
 // 2. Parse JSON request bodies
 app.use(express.json({ limit: '10mb' }));
