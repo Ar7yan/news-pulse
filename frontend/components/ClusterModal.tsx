@@ -1,27 +1,33 @@
 'use client'
 
-import { useEffect } from 'react'
-import { useClusterDetail } from '@/hooks/useClusters'
+import { useEffect }          from 'react'
+import { useClusterDetail }   from '@/hooks/useClusters'
 import { formatDistanceToNow, format } from 'date-fns'
-import type { NewsSource } from '@/types'
-import LoadingState from './LoadingState'
-import ErrorState from './ErrorState'
+import type { NewsSource }    from '@/types'
+import { ModalSkeleton }      from './SkeletonLoader'
 
 interface ClusterModalProps {
   clusterId: number
-  onClose: () => void
+  onClose  : () => void
 }
 
-function SourceTag({ source }: { source: NewsSource }) {
-  const config: Record<string, { label: string; cls: string }> = {
-    bbc:     { label: 'BBC',     cls: 'text-red-400'    },
-    reuters: { label: 'Reuters', cls: 'text-orange-400' },
-    npr:     { label: 'NPR',     cls: 'text-blue-400'   },
-    unknown: { label: 'Other',   cls: 'text-gray-400'   },
-  }
-  const c = config[source] || config.unknown
+const SOURCE_CONFIG: Record<string, { label: string; color: string; bg: string; text: string }> = {
+  bbc    : { label: 'BBC',     color: '#ef4444', bg: 'rgba(239,68,68,0.12)',    text: '#fca5a5' },
+  reuters: { label: 'Reuters', color: '#f97316', bg: 'rgba(249,115,22,0.12)',   text: '#fdba74' },
+  npr    : { label: 'NPR',     color: '#3b82f6', bg: 'rgba(59,130,246,0.12)',   text: '#93c5fd' },
+  unknown: { label: 'Other',   color: '#64748b', bg: 'rgba(100,116,139,0.12)', text: '#94a3b8' },
+}
+
+function SourceTag({ source }: { source: string }) {
+  const c = SOURCE_CONFIG[source] || SOURCE_CONFIG.unknown
   return (
-    <span className={`text-xs font-medium ${c.cls}`}>
+    <span style={{
+      fontSize    : '10px', fontWeight: '700',
+      padding     : '2px 7px', borderRadius: '5px',
+      background  : c.bg, color: c.text,
+      border      : `1px solid ${c.color}30`,
+      textTransform: 'uppercase', letterSpacing: '0.3px',
+    }}>
       {c.label}
     </span>
   )
@@ -31,138 +37,288 @@ export default function ClusterModal({ clusterId, onClose }: ClusterModalProps) 
   const { cluster, isLoading, error } = useClusterDetail(clusterId)
 
   useEffect(() => {
-    function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === 'Escape') onClose()
-    }
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [onClose])
-
-  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    window.addEventListener('keydown', handleKey)
     document.body.style.overflow = 'hidden'
     return () => {
+      window.removeEventListener('keydown', handleKey)
       document.body.style.overflow = ''
     }
-  }, [])
+  }, [onClose])
+
+  // Source counts for distribution
+  const sourceCounts = cluster?.articles?.reduce((acc, a) => {
+    acc[a.source] = (acc[a.source] || 0) + 1
+    return acc
+  }, {} as Record<string, number>) || {}
+
+  const totalArticles = cluster?.articles?.length || 0
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 50,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      padding: '16px',
+    }}>
       {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-black/70 backdrop-blur-sm"
         onClick={onClose}
+        style={{
+          position: 'absolute', inset: 0,
+          background: 'rgba(3,7,18,0.85)',
+          backdropFilter: 'blur(8px)',
+        }}
       />
 
       {/* Modal */}
-      <div className="relative bg-gray-900 border border-gray-700 rounded-2xl w-full max-w-2xl max-h-[85vh] flex flex-col shadow-2xl z-10">
+      <div style={{
+        position    : 'relative', zIndex: 10,
+        background  : '#0f172a',
+        border      : '1px solid #1e293b',
+        borderRadius: '20px',
+        width       : '100%', maxWidth: '680px',
+        maxHeight   : '88vh',
+        display     : 'flex', flexDirection: 'column',
+        boxShadow   : '0 24px 64px rgba(0,0,0,0.6)',
+        animation   : 'scaleIn 0.2s ease-out',
+      }}>
 
         {/* Header */}
-        <div className="flex items-start justify-between p-6 border-b border-gray-800">
-          <div className="flex-1 pr-4">
-            {isLoading ? (
-              <div className="h-6 bg-gray-800 rounded animate-pulse w-3/4" />
-            ) : (
-              <h2 className="text-xl font-bold text-white leading-snug">
-                {cluster?.label}
-              </h2>
-            )}
-            {cluster && (
-              <div className="flex items-center gap-2 mt-2 flex-wrap">
-                {cluster.keywords.slice(0, 5).map((kw) => (
-                  <span
-                    key={kw}
-                    className="text-xs bg-gray-800 text-gray-400 px-2 py-0.5 rounded-md border border-gray-700"
-                  >
-                    {kw}
-                  </span>
-                ))}
-              </div>
-            )}
+        <div style={{
+          padding     : '24px 24px 16px',
+          borderBottom: '1px solid #1e293b',
+        }}>
+          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
+            <div style={{ flex:1, paddingRight:'16px' }}>
+              {isLoading ? (
+                <div style={{ height:'24px', background:'#1e293b', borderRadius:'6px', width:'70%', animation:'shimmer 2s infinite' }}/>
+              ) : (
+                <h2 style={{
+                  fontSize:'20px', fontWeight:'700',
+                  color:'#f1f5f9', lineHeight:1.3, margin:0,
+                }}>
+                  {cluster?.label}
+                </h2>
+              )}
+
+              {cluster && (
+                <div style={{ display:'flex', flexWrap:'wrap', gap:'6px', marginTop:'10px' }}>
+                  {cluster.keywords.slice(0, 6).map(kw => (
+                    <span key={kw} style={{
+                      fontSize:'11px', padding:'3px 8px',
+                      borderRadius:'20px',
+                      background:'rgba(51,65,85,0.5)',
+                      border:'1px solid rgba(71,85,105,0.3)',
+                      color:'#94a3b8',
+                    }}>
+                      {kw}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <button
+              onClick={onClose}
+              style={{
+                padding:'8px', borderRadius:'10px',
+                background:'transparent', border:'1px solid #1e293b',
+                color:'#64748b', cursor:'pointer',
+                display:'flex', alignItems:'center', justifyContent:'center',
+                transition:'all 0.15s ease', flexShrink:0,
+              }}
+              onMouseEnter={e => {
+                (e.currentTarget as HTMLElement).style.background = '#1e293b'
+                ;(e.currentTarget as HTMLElement).style.color = '#f1f5f9'
+              }}
+              onMouseLeave={e => {
+                (e.currentTarget as HTMLElement).style.background = 'transparent'
+                ;(e.currentTarget as HTMLElement).style.color = '#64748b'
+              }}
+            >
+              <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12"/>
+              </svg>
+            </button>
           </div>
 
-          {/* Close button */}
-          <button
-            onClick={onClose}
-            className="p-2 hover:bg-gray-800 rounded-lg text-gray-400 hover:text-white transition-colors duration-200 shrink-0"
-          >
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
+          {/* Stats row */}
+          {cluster && (
+            <div style={{
+              display:'flex', gap:'16px', marginTop:'14px',
+              flexWrap:'wrap', alignItems:'center',
+            }}>
+              <span style={{ fontSize:'12px', color:'#64748b' }}>
+                📰 <span style={{ color:'#94a3b8', fontWeight:'600' }}>
+                  {cluster.articleCount}
+                </span> articles
+              </span>
+
+              {/* Source distribution */}
+              {Object.entries(sourceCounts).map(([source, count]) => {
+                const cfg   = SOURCE_CONFIG[source] || SOURCE_CONFIG.unknown
+                const pct   = Math.round((count / totalArticles) * 100)
+                return (
+                  <span key={source} style={{
+                    fontSize:'11px', color: cfg.text,
+                    display:'flex', alignItems:'center', gap:'4px',
+                  }}>
+                    <span style={{
+                      width:'6px', height:'6px', borderRadius:'50%',
+                      background: cfg.color, display:'inline-block',
+                    }}/>
+                    {cfg.label} {pct}%
+                  </span>
+                )
+              })}
+
+              {cluster.timeRange?.start && (
+                <span style={{ fontSize:'11px', color:'#334155', marginLeft:'auto' }}>
+                  {formatDistanceToNow(new Date(cluster.timeRange.start), { addSuffix: true })}
+                </span>
+              )}
+            </div>
+          )}
+
+          {/* Source distribution bar */}
+          {cluster && Object.keys(sourceCounts).length > 0 && (
+            <div style={{
+              display:'flex', height:'4px', borderRadius:'2px',
+              overflow:'hidden', marginTop:'12px', gap:'2px',
+            }}>
+              {Object.entries(sourceCounts).map(([source, count]) => {
+                const cfg = SOURCE_CONFIG[source] || SOURCE_CONFIG.unknown
+                const pct = (count / totalArticles) * 100
+                return (
+                  <div key={source} style={{
+                    width:`${pct}%`, background: cfg.color,
+                    opacity:0.7, borderRadius:'2px',
+                  }}/>
+                )
+              })}
+            </div>
+          )}
         </div>
 
-        {/* Stats bar */}
-        {cluster && (
-          <div className="px-6 py-3 bg-gray-800/50 border-b border-gray-800 flex items-center gap-4 text-sm flex-wrap">
-            <span className="text-gray-400">
-              {cluster.articleCount} articles
-            </span>
-            {cluster.sources.map((s) => (
-              <SourceTag key={s} source={s} />
-            ))}
-            {cluster.timeRange.start && (
-              <span className="text-gray-500 text-xs ml-auto">
-                {formatDistanceToNow(new Date(cluster.timeRange.start), { addSuffix: true })}
-              </span>
-            )}
-          </div>
-        )}
-
         {/* Article list */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-3">
+        <div style={{
+          flex:'1', overflowY:'auto', padding:'20px 24px',
+          display:'flex', flexDirection:'column', gap:'10px',
+        }}>
           {isLoading ? (
-            <LoadingState message="Loading articles..." />
+            <ModalSkeleton />
           ) : error ? (
-            <ErrorState message={error} />
+            <div style={{ textAlign:'center', padding:'32px', color:'#ef4444' }}>
+              Failed to load articles
+            </div>
           ) : (
-            cluster?.articles.map((article) => (
+            cluster?.articles.map((article, i) => (
               <a
                 key={article.id}
                 href={article.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="block p-4 bg-gray-800/50 hover:bg-gray-800 border border-gray-700 hover:border-gray-500 rounded-xl transition-all duration-200 group"
+                style={{
+                  display:'block', textDecoration:'none',
+                  padding:'14px 16px',
+                  background:'#0a0f1a',
+                  border:'1px solid #1e293b',
+                  borderRadius:'12px',
+                  transition:'all 0.15s ease',
+                  animationDelay:`${i * 0.04}s`,
+                }}
+                onMouseEnter={e => {
+                  const el = e.currentTarget
+                  el.style.background   = '#111827'
+                  el.style.borderColor  = '#334155'
+                  el.style.transform    = 'translateX(3px)'
+                }}
+                onMouseLeave={e => {
+                  const el = e.currentTarget
+                  el.style.background  = '#0a0f1a'
+                  el.style.borderColor = '#1e293b'
+                  el.style.transform   = 'translateX(0)'
+                }}
               >
-                {/* Source + date */}
-                <div className="flex items-center justify-between mb-2 gap-2">
+                {/* Article header */}
+                <div style={{
+                  display:'flex', justifyContent:'space-between',
+                  alignItems:'center', marginBottom:'8px', gap:'8px',
+                }}>
                   <SourceTag source={article.source} />
-                  <span className="text-xs text-gray-600">
+                  <span style={{ fontSize:'11px', color:'#334155', flexShrink:0 }}>
                     {article.publishedAt
                       ? format(new Date(article.publishedAt), 'MMM d, HH:mm')
-                      : 'Recently'}
+                      : 'Recently'
+                    }
                   </span>
                 </div>
 
                 {/* Title */}
-                <h4 className="text-sm font-medium text-gray-200 group-hover:text-white leading-snug transition-colors duration-200 mb-1">
+                <h4 style={{
+                  fontSize:'13px', fontWeight:'600',
+                  color:'#e2e8f0', lineHeight:1.5,
+                  margin:'0 0 6px 0',
+                }}>
                   {article.title}
                 </h4>
 
                 {/* Description */}
                 {article.description && (
-                  <p className="text-xs text-gray-500 leading-relaxed line-clamp-2">
+                  <p style={{
+                    fontSize:'12px', color:'#475569',
+                    lineHeight:1.5, margin:'0 0 8px 0',
+                    display:'-webkit-box',
+                    WebkitLineClamp:2,
+                    WebkitBoxOrient:'vertical',
+                    overflow:'hidden',
+                  }}>
                     {article.description}
                   </p>
                 )}
 
                 {/* Footer */}
-                <div className="flex items-center justify-between mt-2 gap-2">
+                <div style={{
+                  display:'flex', justifyContent:'space-between',
+                  alignItems:'center', marginTop:'6px',
+                }}>
                   {article.author && (
-                    <span className="text-xs text-gray-600">
+                    <span style={{ fontSize:'11px', color:'#334155' }}>
                       By {article.author}
                     </span>
                   )}
-                  {article.similarityScore !== null && (
-                    <span className="text-xs text-gray-600 ml-auto">
-                      {Math.round((article.similarityScore || 0) * 100)}% relevant
-                    </span>
-                  )}
+                  <span style={{
+                    fontSize:'11px', color:'#3b82f6',
+                    marginLeft:'auto', display:'flex', alignItems:'center', gap:'3px',
+                  }}>
+                    Read article
+                    <span style={{ fontSize:'13px' }}>↗</span>
+                  </span>
                 </div>
 
-                <div className="mt-2 text-xs text-blue-500 group-hover:text-blue-400 transition-colors duration-200">
-                  Read full article
-                </div>
+                {/* Similarity bar */}
+                {article.similarityScore !== null && article.similarityScore !== undefined && (
+                  <div style={{
+                    marginTop:'8px', paddingTop:'8px',
+                    borderTop:'1px solid #1e293b',
+                    display:'flex', alignItems:'center', gap:'8px',
+                  }}>
+                    <span style={{ fontSize:'10px', color:'#334155' }}>Relevance</span>
+                    <div style={{
+                      flex:1, height:'3px', background:'#1e293b',
+                      borderRadius:'2px', overflow:'hidden',
+                    }}>
+                      <div style={{
+                        width:`${Math.round((article.similarityScore || 0) * 100)}%`,
+                        height:'100%', background:'#3b82f6',
+                        borderRadius:'2px',
+                      }}/>
+                    </div>
+                    <span style={{ fontSize:'10px', color:'#475569', fontVariantNumeric:'tabular-nums' }}>
+                      {Math.round((article.similarityScore || 0) * 100)}%
+                    </span>
+                  </div>
+                )}
               </a>
             ))
           )}

@@ -1,5 +1,10 @@
 'use client'
 
+import {
+  ClusterGridSkeleton,
+  TimelineSkeleton,
+} from '@/components/SkeletonLoader'
+import HeroSection from '@/components/HeroSection'
 import { useState, useMemo }   from 'react'
 import { useClusters }         from '@/hooks/useClusters'
 import { useTimeline }         from '@/hooks/useTimeline'
@@ -10,7 +15,6 @@ import ClusterModal            from '@/components/ClusterModal'
 import Timeline                from '@/components/Timeline'
 import LoadingState            from '@/components/LoadingState'
 import ErrorState              from '@/components/ErrorState'
-import StatsBar                from '@/components/StatsBar'
 import SearchBar               from '@/components/SearchBar'
 import type {
   SourceFilter as SourceFilterType,
@@ -70,8 +74,8 @@ export default function HomePage() {
   return (
     <div className="space-y-8 animate-fade-in">
 
-      {/* STATS BAR */}
-      <StatsBar />
+      {/* HERO SECTION */}
+      <HeroSection />
 
       {/* PAGE HEADER */}
       <div className="flex flex-col sm:flex-row sm:items-center
@@ -131,7 +135,7 @@ export default function HomePage() {
         </div>
 
         {timelineLoading ? (
-          <LoadingState message="Loading timeline..." />
+  <TimelineSkeleton />
         ) : timelineError ? (
           <ErrorState message={timelineError} onRetry={refreshTimeline} />
         ) : (
@@ -160,7 +164,7 @@ export default function HomePage() {
         </div>
 
         {clustersLoading ? (
-          <LoadingState message="Clustering articles..." />
+          <ClusterGridSkeleton />
         ) : clustersError ? (
           <ErrorState message={clustersError} onRetry={refreshClusters} />
         ) : filteredClusters.length === 0 ? (

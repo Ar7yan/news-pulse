@@ -1,87 +1,113 @@
-// =============================================================================
-// components/RefreshButton.tsx
-// =============================================================================
 'use client'
 
 import { useState } from 'react'
 import { triggerIngest } from '@/services/api'
+
+const STEPS = [
+  'Fetching RSS feeds...',
+  'Extracting articles...',
+  'Building TF-IDF vectors...',
+  'Clustering topics...',
+  'Updating timeline...',
+]
 
 interface RefreshButtonProps {
   onRefresh: () => void
 }
 
 export default function RefreshButton({ onRefresh }: RefreshButtonProps) {
-  const [isScraping, setIsScraping] = useState(false)
-  const [lastStatus, setLastStatus] = useState<string | null>(null)
+  const [isScraping,   setIsScraping]   = useState(false)
+  const [currentStep,  setCurrentStep]  = useState(0)
+  const [status,       setStatus]       = useState<string | null>(null)
 
-  async function handleTriggerScraper() {
+  async function handleFetchNews() {
     try {
       setIsScraping(true)
-      setLastStatus(null)
+      setCurrentStep(0)
+      setStatus(null)
 
       const result = await triggerIngest()
 
-      if (result.success) {
-        setLastStatus(`Job #${result.jobId} started!`)
-      } else {
-        setLastStatus(result.message)
+      // Animate through steps
+      for (let i = 0; i < STEPS.length; i++) {
+        setCurrentStep(i)
+        await new Promise(r => setTimeout(r, 1200))
       }
 
-      // Refresh the UI data after a short delay
+      setStatus(result.success ? '✓ Done!' : result.message)
       setTimeout(() => {
         onRefresh()
-        setLastStatus(null)
-      }, 3000)
+        setStatus(null)
+      }, 2000)
 
-    } catch (err) {
-      setLastStatus('Failed to trigger scraper')
+    } catch {
+      setStatus('Failed to trigger scraper')
     } finally {
       setIsScraping(false)
+      setCurrentStep(0)
     }
   }
 
   return (
-    <div className="flex flex-col items-end gap-1">
-      <div className="flex items-center gap-2">
+    <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:'6px' }}>
+      <div style={{ display:'flex', alignItems:'center', gap:'8px' }}>
 
-        {/* Refresh UI data button */}
+        {/* Refresh icon button */}
         <button
           onClick={onRefresh}
           title="Refresh display"
-          className="p-2 rounded-lg bg-gray-800 hover:bg-gray-700
-                     text-gray-400 hover:text-white border border-gray-700
-                     transition-all duration-200"
+          style={{
+            padding:'8px', borderRadius:'10px',
+            background:'#0f172a', border:'1px solid #1e293b',
+            color:'#64748b', cursor:'pointer',
+            display:'flex', alignItems:'center',
+            transition:'all 0.15s ease',
+          }}
+          onMouseEnter={e => {
+            const el = e.currentTarget as HTMLElement
+            el.style.background = '#1e293b'
+            el.style.color      = '#f1f5f9'
+          }}
+          onMouseLeave={e => {
+            const el = e.currentTarget as HTMLElement
+            el.style.background = '#0f172a'
+            el.style.color      = '#64748b'
+          }}
         >
-          {/* Refresh icon */}
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24"
+          <svg width="15" height="15" fill="none" viewBox="0 0 24 24"
                stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round"
-              d="M4 4v5h.582m15.356 2A8.001 8.001 0
-                 004.582 9m0 0H9m11 11v-5h-.581m0
-                 0a8.003 8.003 0 01-15.357-2m15.357
-                 2H15" />
+              d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
           </svg>
         </button>
 
-        {/* Trigger scraper button */}
+        {/* Fetch News button */}
         <button
-          onClick={handleTriggerScraper}
+          onClick={handleFetchNews}
           disabled={isScraping}
-          className={`
-            flex items-center gap-2 px-4 py-2 rounded-lg
-            text-sm font-medium border transition-all duration-200
-            ${isScraping
-              ? 'bg-gray-800 text-gray-500 border-gray-700 cursor-not-allowed'
-              : 'bg-blue-600 hover:bg-blue-500 text-white border-blue-500 hover:border-blue-400'
-            }
-          `}
+          style={{
+            display    : 'flex', alignItems:'center', gap:'7px',
+            padding    : '9px 18px', borderRadius:'10px',
+            background : isScraping
+              ? '#1e293b'
+              : 'linear-gradient(135deg, #3b82f6, #6366f1)',
+            border     : 'none',
+            color      : isScraping ? '#64748b' : 'white',
+            fontSize   : '13px', fontWeight:'600',
+            cursor     : isScraping ? 'not-allowed' : 'pointer',
+            transition : 'all 0.2s ease',
+            boxShadow  : isScraping ? 'none' : '0 2px 12px rgba(99,102,241,0.35)',
+          }}
         >
           {isScraping ? (
             <>
-              <span className="w-3 h-3 border border-gray-500
-                               border-t-gray-300 rounded-full
-                               animate-spin" />
-              Scraping...
+              <span style={{
+                width:'12px', height:'12px', borderRadius:'50%',
+                border:'2px solid #334155', borderTop:'2px solid #64748b',
+                display:'inline-block', animation:'spin 0.8s linear infinite',
+                flexShrink:0,
+              }}/>
+              {STEPS[currentStep]}
             </>
           ) : (
             <>
@@ -93,9 +119,12 @@ export default function RefreshButton({ onRefresh }: RefreshButtonProps) {
       </div>
 
       {/* Status message */}
-      {lastStatus && (
-        <span className="text-xs text-green-400 animate-fade-in">
-          {lastStatus}
+      {status && (
+        <span style={{
+          fontSize:'12px',
+          color: status.startsWith('✓') ? '#34d399' : '#f87171',
+        }}>
+          {status}
         </span>
       )}
     </div>

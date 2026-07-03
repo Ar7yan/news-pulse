@@ -1,138 +1,1034 @@
+/* ============================================================================
+   globals.css — News Pulse Design System
+   Production-grade CSS with animations, dark theme, and component styles
+   ============================================================================ */
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 /* ============================================================================
-   globals.css — Global Styles for News Pulse
+   CSS CUSTOM PROPERTIES — Single source of truth for all colors
    ============================================================================ */
+:root {
+  /* Brand colors */
+  --color-bbc        : #BB1919;
+  --color-bbc-light  : #FF4444;
+  --color-bbc-dim    : rgba(187, 25, 25, 0.15);
 
+  --color-reuters    : #FF8000;
+  --color-reuters-light: #FFA040;
+  --color-reuters-dim: rgba(255, 128, 0, 0.15);
+
+  --color-npr        : #2B6CB0;
+  --color-npr-light  : #4299E1;
+  --color-npr-dim    : rgba(43, 108, 176, 0.15);
+
+  /* Surface colors */
+  --surface-0        : #030712;
+  --surface-1        : #0f172a;
+  --surface-2        : #1e293b;
+  --surface-3        : #334155;
+  --surface-4        : #475569;
+
+  /* Text colors */
+  --text-primary     : #f8fafc;
+  --text-secondary   : #94a3b8;
+  --text-muted       : #475569;
+  --text-disabled    : #334155;
+
+  /* Border colors */
+  --border-subtle    : #1e293b;
+  --border-default   : #334155;
+  --border-strong    : #475569;
+
+  /* Accent */
+  --accent-blue      : #3b82f6;
+  --accent-purple    : #8b5cf6;
+  --accent-green     : #10b981;
+  --accent-yellow    : #f59e0b;
+  --accent-red       : #ef4444;
+
+  /* Gradients */
+  --gradient-hero    : linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #0f172a 100%);
+  --gradient-card    : linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+  --gradient-bbc     : linear-gradient(135deg, #7f1d1d, #991b1b);
+  --gradient-reuters : linear-gradient(135deg, #7c2d12, #9a3412);
+  --gradient-npr     : linear-gradient(135deg, #1e3a5f, #1e40af);
+
+  /* Shadows */
+  --shadow-sm        : 0 1px 3px rgba(0,0,0,0.4);
+  --shadow-md        : 0 4px 16px rgba(0,0,0,0.4);
+  --shadow-lg        : 0 8px 32px rgba(0,0,0,0.5);
+  --shadow-glow-blue : 0 0 20px rgba(59, 130, 246, 0.3);
+  --shadow-glow-bbc  : 0 0 20px rgba(187, 25, 25, 0.3);
+
+  /* Timing */
+  --transition-fast  : 150ms ease;
+  --transition-base  : 250ms ease;
+  --transition-slow  : 400ms ease;
+
+  /* Border radius */
+  --radius-sm        : 6px;
+  --radius-md        : 10px;
+  --radius-lg        : 16px;
+  --radius-xl        : 24px;
+}
+
+/* ============================================================================
+   BASE STYLES
+   ============================================================================ */
 @layer base {
-  :root {
-    --bbc-color    : #BB1919;
-    --reuters-color: #FF8000;
-    --npr-color    : #2B6CB0;
-  }
-
-  * {
+  *, *::before, *::after {
     box-sizing: border-box;
+    margin    : 0;
+    padding   : 0;
   }
 
   html {
     scroll-behavior: smooth;
+    font-size      : 16px;
+    -webkit-font-smoothing : antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 
   body {
-    @apply bg-gray-950 text-gray-100 antialiased;
-    font-family: -apple-system, BlinkMacSystemFont,
-                 'Segoe UI', Roboto, sans-serif;
+    background-color: var(--surface-0);
+    color           : var(--text-primary);
+    font-family     : -apple-system, BlinkMacSystemFont,
+                      'Segoe UI', 'Inter', Roboto, sans-serif;
+    line-height     : 1.6;
+    min-height      : 100vh;
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width : 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: var(--surface-1);
+  }
+  ::-webkit-scrollbar-thumb {
+    background     : var(--surface-3);
+    border-radius  : 3px;
+    transition     : background var(--transition-fast);
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--surface-4);
+  }
+
+  /* Focus styles */
+  :focus-visible {
+    outline       : 2px solid var(--accent-blue);
+    outline-offset: 2px;
+    border-radius : var(--radius-sm);
+  }
+
+  /* Selection */
+  ::selection {
+    background-color: rgba(59, 130, 246, 0.3);
+    color           : var(--text-primary);
   }
 }
 
+/* ============================================================================
+   KEYFRAME ANIMATIONS
+   ============================================================================ */
+
+/* Shimmer for skeleton loaders */
+@keyframes shimmer {
+  0%   { background-position: -1000px 0; }
+  100% { background-position:  1000px 0; }
+}
+
+/* Fade in */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* Slide up */
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(24px); }
+  to   { opacity: 1; transform: translateY(0);    }
+}
+
+/* Slide in from right */
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(24px); }
+  to   { opacity: 1; transform: translateX(0);    }
+}
+
+/* Scale in */
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to   { opacity: 1; transform: scale(1);    }
+}
+
+/* Pulse glow */
+@keyframes pulseGlow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
+  50%       { box-shadow: 0 0 0 8px rgba(59, 130, 246, 0.1); }
+}
+
+/* Spin */
+@keyframes spin {
+  from { transform: rotate(0deg);   }
+  to   { transform: rotate(360deg); }
+}
+
+/* Counter bounce */
+@keyframes counterBounce {
+  0%   { transform: scale(1);    }
+  50%  { transform: scale(1.05); }
+  100% { transform: scale(1);    }
+}
+
+/* Live dot blink */
+@keyframes liveBlink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.3; }
+}
+
+/* Progress bar fill */
+@keyframes progressFill {
+  from { width: 0%; }
+  to   { width: 100%; }
+}
+
+/* Float */
+@keyframes float {
+  0%, 100% { transform: translateY(0px);  }
+  50%       { transform: translateY(-6px); }
+}
+
+/* ============================================================================
+   COMPONENT STYLES
+   ============================================================================ */
 @layer components {
 
-  /* --- Source Badge Colors --- */
-  .badge-bbc {
-    @apply bg-red-900 text-red-200 border border-red-700;
-  }
-  .badge-reuters {
-    @apply bg-orange-900 text-orange-200 border border-orange-700;
-  }
-  .badge-npr {
-    @apply bg-blue-900 text-blue-200 border border-blue-700;
-  }
-  .badge-unknown {
-    @apply bg-gray-800 text-gray-300 border border-gray-600;
+  /* --------------------------------------------------------------------------
+     SHIMMER SKELETON
+     -------------------------------------------------------------------------- */
+  .skeleton {
+    background: linear-gradient(
+      90deg,
+      var(--surface-2) 0%,
+      var(--surface-3) 50%,
+      var(--surface-2) 100%
+    );
+    background-size: 1000px 100%;
+    animation      : shimmer 2s infinite linear;
+    border-radius  : var(--radius-sm);
   }
 
-  /* --- Card Styles --- */
+  .skeleton-text {
+    @apply skeleton;
+    height       : 14px;
+    border-radius: 4px;
+  }
+
+  .skeleton-title {
+    @apply skeleton;
+    height       : 20px;
+    border-radius: 4px;
+  }
+
+  .skeleton-card {
+    @apply skeleton;
+    height       : 160px;
+    border-radius: var(--radius-lg);
+  }
+
+  /* --------------------------------------------------------------------------
+     CARDS
+     -------------------------------------------------------------------------- */
   .card {
-    @apply bg-gray-900 border border-gray-800 rounded-xl
-           hover:border-gray-600 transition-all duration-200;
+    background   : var(--surface-1);
+    border       : 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    transition   : all var(--transition-base);
   }
 
-  /* --- vis-timeline custom styles --- */
-  .vis-timeline {
-    border: 1px solid #374151 !important;
-    background-color: #111827 !important;
-    border-radius: 12px !important;
-    font-family: inherit !important;
+  .card:hover {
+    border-color: var(--border-default);
+    transform   : translateY(-2px);
+    box-shadow  : var(--shadow-md);
   }
 
-  .vis-item {
-    border-radius: 6px !important;
-    font-size: 12px !important;
-    border-width: 1px !important;
-    color: white !important;
+  .card-glass {
+    background   : rgba(30, 41, 59, 0.6);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border       : 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: var(--radius-lg);
   }
 
-  .vis-item.bbc-item {
-    background-color: #7f1d1d !important;
-    border-color: #BB1919 !important;
-  }
-
-  .vis-item.reuters-item {
-    background-color: #7c2d12 !important;
-    border-color: #FF8000 !important;
-  }
-
-  .vis-item.npr-item {
-    background-color: #1e3a5f !important;
-    border-color: #2B6CB0 !important;
-  }
-
-  .vis-item.vis-selected {
-    box-shadow: 0 0 0 3px rgba(255,255,255,0.3) !important;
-  }
-
-  .vis-label {
-    color: #9ca3af !important;
-    font-size: 13px !important;
-    font-weight: 500 !important;
-  }
-
-  .vis-time-axis .vis-text {
-    color: #6b7280 !important;
-    font-size: 11px !important;
-  }
-
-  .vis-panel.vis-center {
-    border-color: #374151 !important;
-  }
-
-  .timeline-content {
-    padding: 2px 6px;
-  }
-
-  .timeline-label {
-    font-weight: 600;
-    font-size: 11px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 200px;
-  }
-
-  .timeline-meta {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    margin-top: 2px;
-  }
-
-  .source-badge {
-    font-size: 9px;
-    font-weight: 700;
-    padding: 1px 4px;
-    border-radius: 3px;
+  /* --------------------------------------------------------------------------
+     SOURCE BADGES
+     -------------------------------------------------------------------------- */
+  .badge {
+    display      : inline-flex;
+    align-items  : center;
+    gap          : 4px;
+    font-size    : 11px;
+    font-weight  : 600;
+    padding      : 3px 8px;
+    border-radius: var(--radius-sm);
+    letter-spacing: 0.3px;
     text-transform: uppercase;
   }
 
-  .source-badge.bbc     { background: #BB1919; }
-  .source-badge.reuters { background: #FF8000; }
-  .source-badge.npr     { background: #2B6CB0; }
+  .badge-bbc {
+    background: var(--color-bbc-dim);
+    color     : #fca5a5;
+    border    : 1px solid rgba(187, 25, 25, 0.3);
+  }
+
+  .badge-reuters {
+    background: var(--color-reuters-dim);
+    color     : #fdba74;
+    border    : 1px solid rgba(255, 128, 0, 0.3);
+  }
+
+  .badge-npr {
+    background: var(--color-npr-dim);
+    color     : #93c5fd;
+    border    : 1px solid rgba(43, 108, 176, 0.3);
+  }
+
+  .badge-unknown {
+    background: rgba(71, 85, 105, 0.3);
+    color     : #94a3b8;
+    border    : 1px solid rgba(71, 85, 105, 0.3);
+  }
+
+  /* Confidence badge */
+  .badge-confidence {
+    background: rgba(16, 185, 129, 0.15);
+    color     : #6ee7b7;
+    border    : 1px solid rgba(16, 185, 129, 0.3);
+    font-size : 10px;
+    padding   : 2px 6px;
+  }
+
+  .badge-confidence-high {
+    background: rgba(16, 185, 129, 0.2);
+    color     : #34d399;
+    border    : 1px solid rgba(16, 185, 129, 0.4);
+  }
+
+  .badge-confidence-medium {
+    background: rgba(245, 158, 11, 0.15);
+    color     : #fbbf24;
+    border    : 1px solid rgba(245, 158, 11, 0.3);
+  }
+
+  .badge-confidence-low {
+    background: rgba(239, 68, 68, 0.15);
+    color     : #f87171;
+    border    : 1px solid rgba(239, 68, 68, 0.3);
+  }
+
+  /* --------------------------------------------------------------------------
+     ANIMATIONS
+     -------------------------------------------------------------------------- */
+  .animate-fade-in {
+    animation: fadeIn var(--transition-slow) ease-out forwards;
+  }
+
+  .animate-slide-up {
+    animation: slideUp 0.4s ease-out forwards;
+  }
+
+  .animate-scale-in {
+    animation: scaleIn 0.3s ease-out forwards;
+  }
+
+  .animate-spin-slow {
+    animation: spin 2s linear infinite;
+  }
+
+  .animate-live {
+    animation: liveBlink 2s ease-in-out infinite;
+  }
+
+  .animate-float {
+    animation: float 3s ease-in-out infinite;
+  }
+
+  /* Stagger children animations */
+  .stagger-children > * {
+    opacity  : 0;
+    animation: slideUp 0.4s ease-out forwards;
+  }
+  .stagger-children > *:nth-child(1) { animation-delay: 0.05s; }
+  .stagger-children > *:nth-child(2) { animation-delay: 0.10s; }
+  .stagger-children > *:nth-child(3) { animation-delay: 0.15s; }
+  .stagger-children > *:nth-child(4) { animation-delay: 0.20s; }
+  .stagger-children > *:nth-child(5) { animation-delay: 0.25s; }
+  .stagger-children > *:nth-child(6) { animation-delay: 0.30s; }
+
+  /* --------------------------------------------------------------------------
+     LIVE INDICATOR
+     -------------------------------------------------------------------------- */
+  .live-dot {
+    width        : 8px;
+    height       : 8px;
+    border-radius: 50%;
+    background   : var(--accent-green);
+    animation    : liveBlink 2s ease-in-out infinite;
+    box-shadow   : 0 0 6px rgba(16, 185, 129, 0.6);
+  }
+
+  /* --------------------------------------------------------------------------
+     GRADIENT TEXT
+     -------------------------------------------------------------------------- */
+  .gradient-text {
+    background  : linear-gradient(135deg, #60a5fa, #a78bfa, #34d399);
+    -webkit-background-clip: text;
+    background-clip        : text;
+    -webkit-text-fill-color: transparent;
+    color                  : transparent;
+  }
+
+  .gradient-text-warm {
+    background  : linear-gradient(135deg, #f59e0b, #ef4444, #8b5cf6);
+    -webkit-background-clip: text;
+    background-clip        : text;
+    -webkit-text-fill-color: transparent;
+    color                  : transparent;
+  }
+
+  /* --------------------------------------------------------------------------
+     BUTTONS
+     -------------------------------------------------------------------------- */
+  .btn-primary {
+    display      : inline-flex;
+    align-items  : center;
+    gap          : 8px;
+    padding      : 10px 20px;
+    background   : linear-gradient(135deg, #3b82f6, #6366f1);
+    color        : white;
+    border       : none;
+    border-radius: var(--radius-md);
+    font-size    : 14px;
+    font-weight  : 600;
+    cursor       : pointer;
+    transition   : all var(--transition-base);
+    box-shadow   : 0 2px 8px rgba(99, 102, 241, 0.3);
+  }
+
+  .btn-primary:hover {
+    transform : translateY(-1px);
+    box-shadow: 0 4px 16px rgba(99, 102, 241, 0.4);
+    filter    : brightness(1.1);
+  }
+
+  .btn-primary:active {
+    transform: translateY(0);
+  }
+
+  .btn-secondary {
+    display      : inline-flex;
+    align-items  : center;
+    gap          : 8px;
+    padding      : 10px 20px;
+    background   : var(--surface-2);
+    color        : var(--text-secondary);
+    border       : 1px solid var(--border-default);
+    border-radius: var(--radius-md);
+    font-size    : 14px;
+    font-weight  : 500;
+    cursor       : pointer;
+    transition   : all var(--transition-base);
+  }
+
+  .btn-secondary:hover {
+    background  : var(--surface-3);
+    color       : var(--text-primary);
+    border-color: var(--border-strong);
+    transform   : translateY(-1px);
+  }
+
+  /* --------------------------------------------------------------------------
+     VIS-TIMELINE OVERRIDES
+     The white box bug fix is here — forces dark theme on all timeline elements
+     -------------------------------------------------------------------------- */
+
+  /* Container */
+  .vis-timeline {
+    background-color: #0f172a !important;
+    border          : 1px solid #1e293b !important;
+    border-radius   : 12px !important;
+    font-family     : inherit !important;
+    color           : #f8fafc !important;
+  }
+
+  /* Background panels */
+  .vis-panel,
+  .vis-panel.vis-center,
+  .vis-panel.vis-left,
+  .vis-panel.vis-right,
+  .vis-panel.vis-top,
+  .vis-panel.vis-bottom {
+    background-color: #0f172a !important;
+    border-color    : #1e293b !important;
+    color           : #f8fafc !important;
+  }
+
+  /* Grid lines */
+  .vis-grid.vis-minor { border-color: rgba(30, 41, 59, 0.8) !important; }
+  .vis-grid.vis-major { border-color: rgba(51, 65, 85, 0.8) !important; }
+
+  /* Time axis text */
+  .vis-time-axis .vis-text {
+    color      : #64748b !important;
+    font-size  : 11px !important;
+    font-weight: 500 !important;
+    padding    : 4px !important;
+  }
+
+  .vis-time-axis .vis-text.vis-major {
+    color      : #94a3b8 !important;
+    font-weight: 600 !important;
+  }
+
+  /* Group labels (BBC, Reuters, NPR) */
+  .vis-label,
+  .vis-label .vis-inner {
+    background-color: #0f172a !important;
+    color           : #94a3b8 !important;
+    font-size       : 12px !important;
+    font-weight     : 500 !important;
+    border-color    : #1e293b !important;
+    padding         : 0 12px !important;
+    display         : flex !important;
+    align-items     : center !important;
+  }
+
+  /* Current time line */
+  .vis-current-time {
+    background-color: rgba(59, 130, 246, 0.6) !important;
+    width           : 2px !important;
+  }
+
+  /* ==========================================
+     TIMELINE ITEMS — THE MAIN FIX
+     Forces dark colored backgrounds
+     ========================================== */
+
+  /* ALL items base style */
+  .vis-item {
+    background-color: #1e293b !important;
+    border-color    : #334155 !important;
+    border-radius   : 6px !important;
+    color           : #f8fafc !important;
+    font-size       : 11px !important;
+    font-weight     : 500 !important;
+    border-width    : 1px !important;
+    box-shadow      : 0 2px 8px rgba(0,0,0,0.3) !important;
+    transition      : all 0.2s ease !important;
+    cursor          : pointer !important;
+  }
+
+  /* Item content wrapper */
+  .vis-item .vis-item-content {
+    color  : #f8fafc !important;
+    padding: 4px 8px !important;
+  }
+
+  /* BBC items — Red theme */
+  .vis-item.bbc-item {
+    background-color: #450a0a !important;
+    border-color    : #991b1b !important;
+    border-left     : 3px solid #ef4444 !important;
+  }
+
+  .vis-item.bbc-item:hover {
+    background-color: #7f1d1d !important;
+    border-color    : #ef4444 !important;
+    box-shadow      : 0 4px 16px rgba(239, 68, 68, 0.3) !important;
+    transform       : translateY(-1px) !important;
+  }
+
+  /* Reuters items — Orange theme */
+  .vis-item.reuters-item {
+    background-color: #431407 !important;
+    border-color    : #9a3412 !important;
+    border-left     : 3px solid #f97316 !important;
+  }
+
+  .vis-item.reuters-item:hover {
+    background-color: #7c2d12 !important;
+    border-color    : #f97316 !important;
+    box-shadow      : 0 4px 16px rgba(249, 115, 22, 0.3) !important;
+    transform       : translateY(-1px) !important;
+  }
+
+  /* NPR items — Blue theme */
+  .vis-item.npr-item {
+    background-color: #0c1a2e !important;
+    border-color    : #1e40af !important;
+    border-left     : 3px solid #3b82f6 !important;
+  }
+
+  .vis-item.npr-item:hover {
+    background-color: #1e3a5f !important;
+    border-color    : #3b82f6 !important;
+    box-shadow      : 0 4px 16px rgba(59, 130, 246, 0.3) !important;
+    transform       : translateY(-1px) !important;
+  }
+
+  /* Selected state */
+  .vis-item.vis-selected {
+    border-width: 2px !important;
+    box-shadow  : 0 0 0 3px rgba(59, 130, 246, 0.2) !important;
+  }
+
+  .vis-item.bbc-item.vis-selected     { border-color: #ef4444 !important; }
+  .vis-item.reuters-item.vis-selected { border-color: #f97316 !important; }
+  .vis-item.npr-item.vis-selected     { border-color: #3b82f6 !important; }
+
+  /* Point items (single date) */
+  .vis-item.vis-point .vis-item-content {
+    padding: 2px 6px !important;
+  }
+
+  /* Range items (date span) */
+  .vis-item.vis-range {
+    min-width: 60px !important;
+  }
+
+  /* Timeline content styles */
+  .timeline-content {
+    display    : flex;
+    flex-direction: column;
+    gap        : 2px;
+    padding    : 2px 0;
+  }
+
+  .timeline-label {
+    font-weight   : 600;
+    font-size     : 11px;
+    color         : #f1f5f9 !important;
+    white-space   : nowrap;
+    overflow      : hidden;
+    text-overflow : ellipsis;
+    max-width     : 180px;
+    line-height   : 1.3;
+  }
+
+  .timeline-meta {
+    display    : flex;
+    align-items: center;
+    gap        : 4px;
+    flex-wrap  : wrap;
+  }
+
+  .source-badge {
+    font-size     : 9px;
+    font-weight   : 700;
+    padding       : 1px 4px;
+    border-radius : 3px;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+  }
+
+  .source-badge.bbc     {
+    background: rgba(239, 68, 68, 0.3);
+    color     : #fca5a5;
+    border    : 1px solid rgba(239, 68, 68, 0.4);
+  }
+  .source-badge.reuters {
+    background: rgba(249, 115, 22, 0.3);
+    color     : #fdba74;
+    border    : 1px solid rgba(249, 115, 22, 0.4);
+  }
+  .source-badge.npr     {
+    background: rgba(59, 130, 246, 0.3);
+    color     : #93c5fd;
+    border    : 1px solid rgba(59, 130, 246, 0.4);
+  }
 
   .article-count {
-    font-size: 10px;
-    color: rgba(255,255,255,0.6);
+    font-size : 9px;
+    color     : rgba(248, 250, 252, 0.5);
+    font-weight: 500;
   }
+
+  /* Tooltip */
+  .vis-tooltip {
+    background-color: #1e293b !important;
+    border          : 1px solid #334155 !important;
+    border-radius   : 8px !important;
+    color           : #f8fafc !important;
+    font-size       : 12px !important;
+    padding         : 8px 12px !important;
+    box-shadow      : 0 8px 24px rgba(0,0,0,0.5) !important;
+  }
+
+  /* --------------------------------------------------------------------------
+     MODAL OVERLAY
+     -------------------------------------------------------------------------- */
+  .modal-overlay {
+    position  : fixed;
+    inset     : 0;
+    background: rgba(3, 7, 18, 0.85);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    z-index   : 50;
+    animation : fadeIn 0.2s ease-out;
+  }
+
+  .modal-panel {
+    background   : #0f172a;
+    border       : 1px solid #1e293b;
+    border-radius: var(--radius-xl);
+    box-shadow   : var(--shadow-lg), 0 0 60px rgba(0,0,0,0.5);
+    animation    : scaleIn 0.25s ease-out;
+  }
+
+  /* --------------------------------------------------------------------------
+     HERO SECTION
+     -------------------------------------------------------------------------- */
+  .hero-gradient {
+    background: var(--gradient-hero);
+    position  : relative;
+    overflow  : hidden;
+  }
+
+  .hero-gradient::before {
+    content : '';
+    position: absolute;
+    inset   : 0;
+    background: radial-gradient(
+      ellipse at 50% 0%,
+      rgba(99, 102, 241, 0.15) 0%,
+      transparent 70%
+    );
+    pointer-events: none;
+  }
+
+  .hero-gradient::after {
+    content : '';
+    position: absolute;
+    bottom  : 0;
+    left    : 0;
+    right   : 0;
+    height  : 1px;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(99, 102, 241, 0.4),
+      transparent
+    );
+  }
+
+  /* --------------------------------------------------------------------------
+     STAT CARDS
+     -------------------------------------------------------------------------- */
+  .stat-card {
+    background   : var(--surface-1);
+    border       : 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    padding      : 20px;
+    transition   : all var(--transition-base);
+    position     : relative;
+    overflow     : hidden;
+  }
+
+  .stat-card::before {
+    content   : '';
+    position  : absolute;
+    top       : 0;
+    left      : 0;
+    right     : 0;
+    height    : 2px;
+    opacity   : 0;
+    transition: opacity var(--transition-base);
+  }
+
+  .stat-card:hover {
+    border-color: var(--border-default);
+    transform   : translateY(-3px);
+    box-shadow  : var(--shadow-md);
+  }
+
+  .stat-card:hover::before {
+    opacity: 1;
+  }
+
+  .stat-card-blue::before   { background: linear-gradient(90deg, #3b82f6, #6366f1); }
+  .stat-card-green::before  { background: linear-gradient(90deg, #10b981, #059669); }
+  .stat-card-purple::before { background: linear-gradient(90deg, #8b5cf6, #7c3aed); }
+  .stat-card-yellow::before { background: linear-gradient(90deg, #f59e0b, #d97706); }
+
+  /* --------------------------------------------------------------------------
+     PROGRESS STEPS
+     -------------------------------------------------------------------------- */
+  .progress-step {
+    display    : flex;
+    align-items: center;
+    gap        : 12px;
+    padding    : 12px 16px;
+    border-radius: var(--radius-md);
+    transition : all var(--transition-base);
+  }
+
+  .progress-step-pending {
+    opacity: 0.4;
+  }
+
+  .progress-step-active {
+    background: rgba(59, 130, 246, 0.1);
+    border    : 1px solid rgba(59, 130, 246, 0.2);
+  }
+
+  .progress-step-done {
+    background: rgba(16, 185, 129, 0.1);
+    border    : 1px solid rgba(16, 185, 129, 0.2);
+  }
+
+  .progress-step-error {
+    background: rgba(239, 68, 68, 0.1);
+    border    : 1px solid rgba(239, 68, 68, 0.2);
+  }
+
+  /* --------------------------------------------------------------------------
+     ANALYTICS CHART CONTAINER
+     -------------------------------------------------------------------------- */
+  .chart-container {
+    background   : var(--surface-1);
+    border       : 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    padding      : 20px;
+  }
+
+  .chart-container:hover {
+    border-color: var(--border-default);
+  }
+
+  /* --------------------------------------------------------------------------
+     SEARCH INPUT
+     -------------------------------------------------------------------------- */
+  .search-input {
+    width           : 100%;
+    background      : var(--surface-1);
+    border          : 1px solid var(--border-subtle);
+    border-radius   : var(--radius-md);
+    padding         : 10px 16px 10px 40px;
+    font-size       : 14px;
+    color           : var(--text-primary);
+    transition      : all var(--transition-base);
+    outline         : none;
+  }
+
+  .search-input::placeholder {
+    color: var(--text-muted);
+  }
+
+  .search-input:focus {
+    border-color: var(--accent-blue);
+    box-shadow  : 0 0 0 3px rgba(59, 130, 246, 0.1);
+    background  : var(--surface-2);
+  }
+
+  /* --------------------------------------------------------------------------
+     FILTER BUTTONS
+     -------------------------------------------------------------------------- */
+  .filter-btn {
+    display      : inline-flex;
+    align-items  : center;
+    gap          : 6px;
+    padding      : 7px 14px;
+    border-radius: var(--radius-md);
+    font-size    : 13px;
+    font-weight  : 500;
+    border       : 1px solid var(--border-subtle);
+    background   : var(--surface-1);
+    color        : var(--text-secondary);
+    cursor       : pointer;
+    transition   : all var(--transition-fast);
+    white-space  : nowrap;
+  }
+
+  .filter-btn:hover {
+    background  : var(--surface-2);
+    border-color: var(--border-default);
+    color       : var(--text-primary);
+  }
+
+  .filter-btn-active-all {
+    background  : var(--surface-3);
+    border-color: var(--border-strong);
+    color       : var(--text-primary);
+  }
+
+  .filter-btn-active-bbc {
+    background  : var(--color-bbc-dim);
+    border-color: rgba(187, 25, 25, 0.4);
+    color       : #fca5a5;
+  }
+
+  .filter-btn-active-reuters {
+    background  : var(--color-reuters-dim);
+    border-color: rgba(255, 128, 0, 0.4);
+    color       : #fdba74;
+  }
+
+  .filter-btn-active-npr {
+    background  : var(--color-npr-dim);
+    border-color: rgba(43, 108, 176, 0.4);
+    color       : #93c5fd;
+  }
+
+  /* --------------------------------------------------------------------------
+     CLUSTER CARD
+     -------------------------------------------------------------------------- */
+  .cluster-card {
+    background   : var(--surface-1);
+    border       : 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    padding      : 20px;
+    cursor       : pointer;
+    transition   : all var(--transition-base);
+    text-align   : left;
+    width        : 100%;
+    position     : relative;
+    overflow     : hidden;
+  }
+
+  .cluster-card::after {
+    content   : '';
+    position  : absolute;
+    inset     : 0;
+    background: linear-gradient(
+      135deg,
+      transparent 0%,
+      rgba(255,255,255,0.01) 100%
+    );
+    opacity   : 0;
+    transition: opacity var(--transition-base);
+  }
+
+  .cluster-card:hover {
+    border-color: var(--border-default);
+    transform   : translateY(-3px);
+    box-shadow  : var(--shadow-md);
+  }
+
+  .cluster-card:hover::after {
+    opacity: 1;
+  }
+
+  /* --------------------------------------------------------------------------
+     KEYWORD CHIP
+     -------------------------------------------------------------------------- */
+  .keyword-chip {
+    display      : inline-flex;
+    align-items  : center;
+    font-size    : 11px;
+    padding      : 3px 8px;
+    border-radius: 20px;
+    background   : rgba(51, 65, 85, 0.5);
+    color        : #94a3b8;
+    border       : 1px solid rgba(71, 85, 105, 0.4);
+    transition   : all var(--transition-fast);
+    cursor       : default;
+  }
+
+  .keyword-chip:hover {
+    background  : rgba(71, 85, 105, 0.5);
+    color       : #cbd5e1;
+    border-color: rgba(100, 116, 139, 0.5);
+  }
+
+  /* --------------------------------------------------------------------------
+     DIVIDER
+     -------------------------------------------------------------------------- */
+  .divider {
+    height    : 1px;
+    background: var(--border-subtle);
+    margin    : 0;
+  }
+
+  /* --------------------------------------------------------------------------
+     EMPTY STATE
+     -------------------------------------------------------------------------- */
+  .empty-state {
+    display        : flex;
+    flex-direction : column;
+    align-items    : center;
+    justify-content: center;
+    padding        : 64px 24px;
+    text-align     : center;
+    gap            : 12px;
+  }
+
+  .empty-state-icon {
+    font-size  : 48px;
+    line-height: 1;
+    animation  : float 3s ease-in-out infinite;
+  }
+
+  /* --------------------------------------------------------------------------
+     SECTION HEADER
+     -------------------------------------------------------------------------- */
+  .section-header {
+    display    : flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom  : 16px;
+  }
+
+  .section-title {
+    font-size  : 18px;
+    font-weight: 600;
+    color      : var(--text-primary);
+    display    : flex;
+    align-items: center;
+    gap        : 8px;
+  }
+
+  /* --------------------------------------------------------------------------
+     SCROLLABLE MODAL BODY
+     -------------------------------------------------------------------------- */
+  .modal-body {
+    overflow-y          : auto;
+    scrollbar-width     : thin;
+    scrollbar-color     : var(--surface-3) transparent;
+  }
+
+  .modal-body::-webkit-scrollbar {
+    width: 4px;
+  }
+
+  .modal-body::-webkit-scrollbar-thumb {
+    background   : var(--surface-3);
+    border-radius: 2px;
+  }
+}
+
+/* ============================================================================
+   UTILITY OVERRIDES
+   ============================================================================ */
+@layer utilities {
+  .text-gradient {
+    background             : linear-gradient(135deg, #60a5fa, #a78bfa);
+    -webkit-background-clip: text;
+    background-clip        : text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .bg-surface-0 { background-color: var(--surface-0); }
+  .bg-surface-1 { background-color: var(--surface-1); }
+  .bg-surface-2 { background-color: var(--surface-2); }
+
+  .border-subtle  { border-color: var(--border-subtle);  }
+  .border-default { border-color: var(--border-default); }
+
+  .transition-base { transition: all var(--transition-base); }
+  .transition-fast { transition: all var(--transition-fast); }
 }
