@@ -39,26 +39,37 @@ def download_nltk_data():
     """
     Download required NLTK datasets.
     Safe to call multiple times — NLTK skips if already downloaded.
+    Works on both local machines and GitHub Actions runners.
     """
+    import os
+
+    # Add GitHub Actions NLTK path if running in CI
+    nltk_dir = os.environ.get('NLTK_DATA', None)
+    if nltk_dir:
+        if nltk_dir not in nltk.data.path:
+            nltk.data.path.insert(0, nltk_dir)
+
     packages = [
-        ("tokenizers/punkt",          "punkt"),
-        ("tokenizers/punkt_tab",      "punkt_tab"),
-        ("corpora/stopwords",         "stopwords"),
-        ("corpora/wordnet",           "wordnet"),
-        ("corpora/omw-1.4",           "omw-1.4"),
+        ("tokenizers/punkt",     "punkt"),
+        ("tokenizers/punkt_tab", "punkt_tab"),
+        ("corpora/stopwords",    "stopwords"),
+        ("corpora/wordnet",      "wordnet"),
+        ("corpora/omw-1.4",      "omw-1.4"),
     ]
 
     for path, package in packages:
         try:
             nltk.data.find(path)
+            logger.debug(f"NLTK package already available: {package}")
         except LookupError:
             logger.info(f"Downloading NLTK package: {package}")
-            nltk.download(package, quiet=True)
-
-
-# Run downloads when module is imported
-download_nltk_data()
-
+            try:
+                if nltk_dir:
+                    nltk.download(package, download_dir=nltk_dir, quiet=True)
+                else:
+                    nltk.download(package, quiet=True)
+            except Exception as e:
+                logger.warning(f"Failed to download {package}: {e}")
 
 # -----------------------------------------------------------------------------
 # Initialize NLP tools (created once, reused for all articles)
