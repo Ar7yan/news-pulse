@@ -29,6 +29,8 @@ const ingestRoutes   = require('./routes/ingest');
 
 // Create Express app
 const app = express();
+// Trust Render's proxy — fixes rate limiter X-Forwarded-For warning
+app.set('trust proxy', 1)
 
 
 // =============================================================================

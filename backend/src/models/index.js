@@ -64,18 +64,26 @@ async function getAllClusters({ source = 'all', limit = 20, page = 1 } = {}) {
  * Get total cluster count (for pagination).
  */
 async function getClusterCount(source = 'all') {
-  let sql    = `SELECT COUNT(*) as total FROM cluster_summary`;
-  const params = [];
+  // Query clusters table directly instead of the view
+  // View joins 3 tables which is slow on free tier
+  let sql    = `SELECT COUNT(*) as total FROM clusters`
+  const params = []
 
   if (source && source !== 'all') {
-    params.push(source);
-    sql += ` WHERE $${params.length} = ANY(sources)`;
+    // Join only when filtering by source
+    sql = `
+      SELECT COUNT(DISTINCT c.id) as total
+      FROM clusters c
+      JOIN cluster_items ci ON ci.cluster_id = c.id
+      JOIN articles a ON a.id = ci.article_id
+      WHERE a.source = $1
+    `
+    params.push(source)
   }
 
-  const result = await query(sql, params);
-  return parseInt(result.rows[0].total, 10);
+  const result = await query(sql, params)
+  return parseInt(result.rows[0].total, 10)
 }
-
 
 /**
  * Get a single cluster by ID with all its articles.
