@@ -30,6 +30,7 @@ if not DATABASE_URL:
 #   label  — human-readable name for logging
 # -----------------------------------------------------------------------------
 RSS_FEEDS = [
+    # ── BBC ───────────────────────────────────────────────────
     {
         "name" : "bbc",
         "url"  : "http://feeds.bbci.co.uk/news/rss.xml",
@@ -46,6 +47,13 @@ RSS_FEEDS = [
         "label": "BBC Technology"
     },
     {
+        "name" : "bbc",
+        "url"  : "http://feeds.bbci.co.uk/news/science_and_environment/rss.xml",
+        "label": "BBC Science"
+    },
+
+    # ── NPR ───────────────────────────────────────────────────
+    {
         "name" : "npr",
         "url"  : "https://feeds.npr.org/1001/rss.xml",
         "label": "NPR News"
@@ -61,11 +69,57 @@ RSS_FEEDS = [
         "label": "NPR Politics"
     },
     {
-        "name" : "reuters",
-        "url"  : "https://feeds.reuters.com/reuters/topNews.rss",
-        "label": "Reuters Top News"
+        "name" : "npr",
+        "url"  : "https://feeds.npr.org/1045/rss.xml",
+        "label": "NPR Technology"
+    },
+
+    # ── The Guardian ──────────────────────────────────────────
+    {
+        "name" : "guardian",
+        "url"  : "https://www.theguardian.com/world/rss",
+        "label": "Guardian World"
+    },
+    {
+        "name" : "guardian",
+        "url"  : "https://www.theguardian.com/technology/rss",
+        "label": "Guardian Tech"
+    },
+    {
+        "name" : "guardian",
+        "url"  : "https://www.theguardian.com/science/rss",
+        "label": "Guardian Science"
+    },
+
+    # ── Al Jazeera ────────────────────────────────────────────
+    {
+        "name" : "aljazeera",
+        "url"  : "https://www.aljazeera.com/xml/rss/all.xml",
+        "label": "Al Jazeera"
+    },
+
+    # ── TechCrunch ────────────────────────────────────────────
+    {
+        "name" : "techcrunch",
+        "url"  : "https://techcrunch.com/feed/",
+        "label": "TechCrunch"
+    },
+
+    # ── Hacker News ───────────────────────────────────────────
+    {
+        "name" : "hackernews",
+        "url"  : "https://hnrss.org/frontpage",
+        "label": "Hacker News"
+    },
+
+    # ── Associated Press ──────────────────────────────────────
+    {
+        "name" : "ap",
+        "url"  : "https://feeds.apnews.com/rss/apf-topnews",
+        "label": "AP Top News"
     },
 ]
+    
 
 # -----------------------------------------------------------------------------
 # SCRAPER SETTINGS

@@ -1,18 +1,6 @@
 # =============================================================================
 # queries.py — All Database Queries in One Place
 # =============================================================================
-# WHY THIS PATTERN?
-# Keeping ALL SQL in one file means:
-# - Easy to audit what queries exist
-# - No SQL scattered across 10 different files
-# - Easy to optimize later (add indexes, rewrite queries)
-# - Controllers/services never write raw SQL
-#
-# Each function follows the same pattern:
-#   1. Log what it's doing
-#   2. Execute SQL using the context manager
-#   3. Return Python objects (dicts/lists), never raw DB rows
-# =============================================================================
 
 from datetime import datetime
 from typing import Optional
@@ -27,10 +15,7 @@ logger = get_logger(__name__)
 # =============================================================================
 
 def create_ingest_job() -> int:
-    """
-    Insert a new ingest job with 'running' status.
-    Returns the new job's ID.
-    """
+    """Insert a new ingest job with 'running' status. Returns job ID."""
     sql = """
         INSERT INTO ingest_jobs (status, started_at)
         VALUES ('running', NOW())
@@ -38,18 +23,18 @@ def create_ingest_job() -> int:
     """
     with get_db_cursor(commit=True) as cur:
         cur.execute(sql)
-        row = cur.fetchone()
+        row    = cur.fetchone()
         job_id = row["id"]
         logger.info(f"Created ingest job #{job_id}")
         return job_id
 
 
 def complete_ingest_job(
-    job_id: int,
-    articles_scraped: int,
-    articles_skipped: int,
+    job_id            : int,
+    articles_scraped  : int,
+    articles_skipped  : int,
     clusters_generated: int,
-    sources_processed: list
+    sources_processed : list,
 ) -> None:
     """Mark an ingest job as completed with final stats."""
     sql = """
@@ -68,11 +53,13 @@ def complete_ingest_job(
             articles_skipped,
             clusters_generated,
             sources_processed,
-            job_id
+            job_id,
         ))
-        logger.info(f"Completed ingest job #{job_id} — "
-                   f"{articles_scraped} scraped, "
-                   f"{clusters_generated} clusters")
+        logger.info(
+            f"Completed ingest job #{job_id} — "
+            f"{articles_scraped} scraped, "
+            f"{clusters_generated} clusters"
+        )
 
 
 def fail_ingest_job(job_id: int, error_message: str) -> None:
@@ -105,9 +92,7 @@ def get_ingest_job(job_id: int) -> Optional[dict]:
 def article_exists(url_hash: str) -> bool:
     """
     Check if an article already exists using its URL hash.
-    This is our deduplication check — runs before every insert.
-
-    Uses the unique index on url_hash for O(1) lookup.
+    Deduplication check — runs before every insert.
     """
     sql = "SELECT 1 FROM articles WHERE url_hash = %s LIMIT 1"
     with get_db_cursor() as cur:
@@ -117,13 +102,7 @@ def article_exists(url_hash: str) -> bool:
 
 def insert_article(article: dict) -> Optional[int]:
     """
-    Insert a new article into the database.
-
-    Args:
-        article: Dict with keys matching articles table columns
-
-    Returns:
-        New article ID, or None if insert failed
+    Insert a new article. Returns new ID or None if duplicate.
     """
     sql = """
         INSERT INTO articles (
@@ -151,13 +130,7 @@ def insert_article(article: dict) -> Optional[int]:
 def get_recent_articles(limit: int = 500) -> list:
     """
     Fetch recent articles for clustering.
-    Only fetches articles that have full_text (needed for NLP).
-
-    Args:
-        limit: Maximum number of articles to return
-
-    Returns:
-        List of article dicts
+    Only articles with full_text (needed for NLP).
     """
     sql = """
         SELECT
@@ -192,8 +165,6 @@ def get_article_count() -> int:
 def delete_old_clusters() -> None:
     """
     Delete all existing clusters before regenerating.
-
-    WHY? We regenerate clusters on every run (not incremental).
     CASCADE delete automatically removes cluster_items too.
     """
     with get_db_cursor(commit=True) as cur:
@@ -203,12 +174,13 @@ def delete_old_clusters() -> None:
 
 
 def insert_cluster(
-    label: str,
-    keywords: list,
+    label        : str,
+    keywords     : list,
     article_count: int,
-    run_id: int,
-    earliest_at: Optional[datetime],
-    latest_at: Optional[datetime]
+    run_id       : int,
+    earliest_at  : Optional[datetime],
+    latest_at    : Optional[datetime],
+    ai_summary   : Optional[str] = None,
 ) -> int:
     """
     Insert a new cluster and return its ID.
@@ -220,6 +192,7 @@ def insert_cluster(
         run_id:        ID of the current ingest job
         earliest_at:   Oldest article date in cluster
         latest_at:     Newest article date in cluster
+        ai_summary:    AI-generated 2-sentence summary (optional)
 
     Returns:
         New cluster ID
@@ -227,9 +200,10 @@ def insert_cluster(
     sql = """
         INSERT INTO clusters (
             label, keywords, article_count, run_id,
-            earliest_article_at, latest_article_at
+            earliest_article_at, latest_article_at,
+            ai_summary
         )
-        VALUES (%s, %s, %s, %s, %s, %s)
+        VALUES (%s, %s, %s, %s, %s, %s, %s)
         RETURNING id
     """
     with get_db_cursor(commit=True) as cur:
@@ -239,12 +213,36 @@ def insert_cluster(
             article_count,
             run_id,
             earliest_at,
-            latest_at
+            latest_at,
+            ai_summary,
         ))
-        row = cur.fetchone()
+        row        = cur.fetchone()
         cluster_id = row["id"]
         logger.debug(f"Inserted cluster #{cluster_id}: '{label}'")
         return cluster_id
+
+
+def update_cluster_summaries(summaries: dict) -> None:
+    """
+    Update AI summaries for multiple clusters after generation.
+
+    Args:
+        summaries: Dict mapping cluster_id (int) -> summary (str)
+    """
+    if not summaries:
+        return
+
+    sql = """
+        UPDATE clusters
+        SET ai_summary = %s
+        WHERE id = %s
+    """
+
+    with get_db_cursor(commit=True) as cur:
+        for cluster_id, summary in summaries.items():
+            cur.execute(sql, (summary, cluster_id))
+
+    logger.info(f"Updated {len(summaries)} cluster AI summaries")
 
 
 def insert_cluster_items(items: list) -> None:
@@ -252,8 +250,7 @@ def insert_cluster_items(items: list) -> None:
     Bulk insert article-cluster mappings.
 
     Args:
-        items: List of dicts with keys:
-               cluster_id, article_id, similarity_score
+        items: List of dicts with cluster_id, article_id, similarity_score
     """
     if not items:
         return
@@ -264,19 +261,30 @@ def insert_cluster_items(items: list) -> None:
         ON CONFLICT (cluster_id, article_id) DO NOTHING
     """
     with get_db_cursor(commit=True) as cur:
-        # executemany is more efficient than looping execute()
         cur.executemany(sql, items)
         logger.debug(f"Inserted {len(items)} cluster item mappings")
 
 
 def get_all_clusters() -> list:
     """
-    Get all clusters with their article sources.
+    Get all clusters with their article sources and AI summaries.
     Used by GET /clusters API endpoint.
     """
     sql = """
-        SELECT * FROM cluster_summary
-        ORDER BY article_count DESC
+        SELECT
+            cs.id,
+            cs.label,
+            cs.keywords,
+            cs.article_count,
+            cs.created_at,
+            cs.earliest_article_at,
+            cs.latest_article_at,
+            cs.run_id,
+            cs.sources,
+            c.ai_summary
+        FROM cluster_summary cs
+        JOIN clusters c ON c.id = cs.id
+        ORDER BY cs.article_count DESC
     """
     with get_db_cursor() as cur:
         cur.execute(sql)
@@ -286,13 +294,18 @@ def get_all_clusters() -> list:
 
 def get_cluster_with_articles(cluster_id: int) -> Optional[dict]:
     """
-    Get a single cluster with all its articles.
+    Get a single cluster with all its articles + AI summary.
     Used by GET /clusters/:id API endpoint.
     """
-    # First get the cluster
-    cluster_sql = "SELECT * FROM clusters WHERE id = %s"
+    cluster_sql = """
+        SELECT
+            id, label, keywords, article_count,
+            run_id, created_at, earliest_article_at,
+            latest_article_at, ai_summary
+        FROM clusters
+        WHERE id = %s
+    """
 
-    # Then get its articles with similarity scores
     articles_sql = """
         SELECT
             a.id, a.title, a.url, a.source,

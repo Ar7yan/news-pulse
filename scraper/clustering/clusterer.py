@@ -1,26 +1,6 @@
 # =============================================================================
 # clusterer.py — Article Clustering Using Cosine Similarity
 # =============================================================================
-# WHAT IS COSINE SIMILARITY?
-#   Measures the angle between two TF-IDF vectors.
-#   Score of 1.0 = identical topics
-#   Score of 0.0 = completely different topics
-#
-# EXAMPLE:
-#   Article A: "climate change carbon emissions policy"
-#   Article B: "carbon tax climate policy environment"
-#   Article C: "stock market nasdaq dow jones rally"
-#
-#   similarity(A, B) = 0.72  → same cluster (climate)
-#   similarity(A, C) = 0.02  → different clusters
-#   similarity(B, C) = 0.01  → different clusters
-#
-# ALGORITHM: Agglomerative Clustering
-#   - Starts with every article as its own cluster
-#   - Merges the two most similar clusters repeatedly
-#   - Stops when no two clusters have similarity > threshold
-#   - We use sklearn's AgglomerativeClustering with cosine distance
-# =============================================================================
 
 import numpy as np
 from sklearn.cluster import AgglomerativeClustering
@@ -34,13 +14,14 @@ from config.settings import (
     SIMILARITY_THRESHOLD,
     MAX_CLUSTERS,
     MIN_CLUSTER_SIZE,
-    TOP_KEYWORDS_COUNT
+    TOP_KEYWORDS_COUNT,
 )
 from clustering.vectorizer import get_cluster_keywords, generate_cluster_label
 from database.queries import (
     delete_old_clusters,
     insert_cluster,
-    insert_cluster_items
+    insert_cluster_items,
+    update_cluster_summaries,
 )
 from utils.logger import get_logger
 
@@ -52,28 +33,14 @@ logger = get_logger(__name__)
 # =============================================================================
 
 def cluster_articles(
-    articles: List[dict],
+    articles          : List[dict],
     preprocessed_texts: List[str],
-    tfidf_matrix: csr_matrix,
-    vectorizer: TfidfVectorizer,
-    run_id: int
+    tfidf_matrix      : csr_matrix,
+    vectorizer        : TfidfVectorizer,
+    run_id            : int,
 ) -> int:
     """
-    Cluster articles by topic and save results to database.
-
-    Full pipeline:
-    1. Compute cosine similarity matrix
-    2. Run agglomerative clustering
-    3. Filter out tiny clusters (noise)
-    4. Generate keywords and labels for each cluster
-    5. Save clusters + cluster_items to database
-
-    Args:
-        articles:           List of article dicts from database
-        preprocessed_texts: Cleaned texts (parallel list to articles)
-        tfidf_matrix:       TF-IDF matrix (n_articles × n_features)
-        vectorizer:         Fitted TF-IDF vectorizer
-        run_id:             Current ingest job ID
+    Cluster articles by topic, save to database, generate AI summaries.
 
     Returns:
         Number of clusters generated
@@ -86,58 +53,36 @@ def cluster_articles(
         return 0
 
     # ------------------------------------------------------------------
-    # Step 1: Compute cosine similarity matrix
+    # Step 1: Cosine similarity matrix
     # ------------------------------------------------------------------
     logger.info("Computing cosine similarity matrix...")
-
-    # Convert sparse matrix to dense for cosine_similarity
-    # Shape: (n_articles, n_articles)
-    # similarity_matrix[i][j] = how similar article i is to article j
     similarity_matrix = cosine_similarity(tfidf_matrix)
 
     logger.info(
-        f"Similarity matrix computed — "
-        f"shape: {similarity_matrix.shape}, "
-        f"mean similarity: {similarity_matrix.mean():.3f}"
+        f"Similarity matrix: {similarity_matrix.shape}, "
+        f"mean={similarity_matrix.mean():.3f}"
     )
 
     # ------------------------------------------------------------------
-    # Step 2: Run Agglomerative Clustering
+    # Step 2: Agglomerative Clustering
     # ------------------------------------------------------------------
-
-    # Convert similarity to DISTANCE (clustering needs distances, not similarities)
-    # distance = 1 - similarity
-    # Similar articles (similarity=0.9) → small distance (0.1) → merged
-    # Different articles (similarity=0.1) → large distance (0.9) → not merged
-    distance_matrix = 1 - similarity_matrix
-
-    # Clip to [0, 1] to fix floating point issues
-    distance_matrix = np.clip(distance_matrix, 0, 1)
-
-    # Determine number of clusters
-    # We don't know the right number upfront, so we use a distance threshold
-    # Articles within SIMILARITY_THRESHOLD of each other get merged
+    distance_matrix   = np.clip(1 - similarity_matrix, 0, 1)
     distance_threshold = 1 - SIMILARITY_THRESHOLD
 
-    # Cap at MAX_CLUSTERS or n_articles (whichever is smaller)
-    n_clusters_max = min(MAX_CLUSTERS, n_articles // MIN_CLUSTER_SIZE)
-    n_clusters_max = max(n_clusters_max, 1)
+    n_clusters_max = max(min(MAX_CLUSTERS, n_articles // MIN_CLUSTER_SIZE), 1)
 
     logger.info(
         f"Running AgglomerativeClustering — "
-        f"distance_threshold={distance_threshold:.2f}, "
-        f"max_clusters={n_clusters_max}"
+        f"distance_threshold={distance_threshold:.2f}"
     )
 
     try:
         clustering = AgglomerativeClustering(
-            n_clusters        = None,           # Don't fix number of clusters
-            distance_threshold= distance_threshold,
-            metric            = "precomputed",  # We provide our own distance matrix
-            linkage           = "average",      # Use average distance between clusters
+            n_clusters         = None,
+            distance_threshold = distance_threshold,
+            metric             = "precomputed",
+            linkage            = "average",
         )
-
-        # labels[i] = which cluster article i belongs to
         labels = clustering.fit_predict(distance_matrix)
 
     except Exception as e:
@@ -145,23 +90,19 @@ def cluster_articles(
         return 0
 
     # ------------------------------------------------------------------
-    # Step 3: Group articles by cluster label
+    # Step 3: Group articles by cluster
     # ------------------------------------------------------------------
     cluster_groups: Dict[int, List[int]] = {}
+    for idx, label in enumerate(labels):
+        label = int(label)
+        if label not in cluster_groups:
+            cluster_groups[label] = []
+        cluster_groups[label].append(idx)
 
-    for article_idx, cluster_label in enumerate(labels):
-        cluster_label = int(cluster_label)
-        if cluster_label not in cluster_groups:
-            cluster_groups[cluster_label] = []
-        cluster_groups[cluster_label].append(article_idx)
-
-    logger.info(
-        f"Found {len(cluster_groups)} raw clusters "
-        f"(before filtering small ones)"
-    )
+    logger.info(f"Found {len(cluster_groups)} raw clusters")
 
     # ------------------------------------------------------------------
-    # Step 4: Filter small clusters (noise)
+    # Step 4: Filter small clusters
     # ------------------------------------------------------------------
     valid_clusters = {
         label: indices
@@ -170,118 +111,131 @@ def cluster_articles(
     }
 
     logger.info(
-        f"{len(valid_clusters)} clusters remain "
-        f"after filtering (min_size={MIN_CLUSTER_SIZE})"
+        f"{len(valid_clusters)} clusters after filtering "
+        f"(min_size={MIN_CLUSTER_SIZE})"
     )
 
     if not valid_clusters:
-        logger.warning(
-            "No valid clusters found. Try lowering SIMILARITY_THRESHOLD "
-            "or MIN_CLUSTER_SIZE in .env"
-        )
+        logger.warning("No valid clusters found")
         return 0
 
     # ------------------------------------------------------------------
-    # Step 5: Save to database
+    # Step 5: Delete old clusters + save new ones
     # ------------------------------------------------------------------
-
-    # Clear old clusters first
     delete_old_clusters()
 
     clusters_saved = 0
+    saved_cluster_ids = []
 
-    # Sort clusters by size (largest first)
     sorted_clusters = sorted(
         valid_clusters.items(),
         key=lambda x: len(x[1]),
-        reverse=True
-    )
+        reverse=True,
+    )[:MAX_CLUSTERS]
 
-    # Respect MAX_CLUSTERS limit
-    sorted_clusters = sorted_clusters[:MAX_CLUSTERS]
+    # Track cluster data for AI summarization
+    clusters_for_summary = []
 
     for cluster_label, article_indices in sorted_clusters:
         try:
-            clusters_saved += _save_cluster(
-                cluster_label    = cluster_label,
-                article_indices  = article_indices,
-                articles         = articles,
-                tfidf_matrix     = tfidf_matrix,
-                vectorizer       = vectorizer,
-                similarity_matrix= similarity_matrix,
-                run_id           = run_id
+            result = _save_cluster(
+                cluster_label     = cluster_label,
+                article_indices   = article_indices,
+                articles          = articles,
+                tfidf_matrix      = tfidf_matrix,
+                vectorizer        = vectorizer,
+                similarity_matrix = similarity_matrix,
+                run_id            = run_id,
             )
+
+            if result["saved"]:
+                clusters_saved += 1
+                saved_cluster_ids.append(result["db_id"])
+                clusters_for_summary.append({
+                    "id"      : result["db_id"],
+                    "label"   : result["label"],
+                    "keywords": result["keywords"],
+                    "articles": [
+                        articles[idx] for idx in article_indices
+                        if idx < len(articles)
+                    ],
+                })
+
         except Exception as e:
-            logger.error(
-                f"Failed to save cluster {cluster_label}: {e}",
-                exc_info=True
-            )
+            logger.error(f"Failed to save cluster {cluster_label}: {e}")
             continue
 
-    logger.info(f"Clustering complete — {clusters_saved} clusters saved")
+    logger.info(f"Saved {clusters_saved} clusters to database")
+
+    # ------------------------------------------------------------------
+    # Step 6: Generate AI summaries (non-blocking)
+    # ------------------------------------------------------------------
+    try:
+        from utils.summarizer import summarize_clusters_batch
+
+        summaries = summarize_clusters_batch(clusters_for_summary)
+
+        if summaries:
+            update_cluster_summaries(summaries)
+            logger.info(f"AI summaries saved for {len(summaries)} clusters")
+
+    except ImportError:
+        logger.debug("summarizer module not found — skipping AI summaries")
+    except Exception as e:
+        logger.warning(f"AI summarization failed (non-critical): {e}")
+
+    logger.info(f"Clustering complete — {clusters_saved} clusters generated")
     return clusters_saved
 
 
 # =============================================================================
-# Save a Single Cluster
+# Save Single Cluster
 # =============================================================================
 
 def _save_cluster(
-    cluster_label: int,
-    article_indices: List[int],
-    articles: List[dict],
-    tfidf_matrix: csr_matrix,
-    vectorizer: TfidfVectorizer,
+    cluster_label    : int,
+    article_indices  : List[int],
+    articles         : List[dict],
+    tfidf_matrix     : csr_matrix,
+    vectorizer       : TfidfVectorizer,
     similarity_matrix: np.ndarray,
-    run_id: int
-) -> int:
+    run_id           : int,
+) -> dict:
     """
-    Generate keywords, label, and save one cluster to the database.
+    Generate keywords, label, and save one cluster.
 
-    Returns:
-        1 if saved successfully, 0 otherwise
+    Returns dict with saved status, db_id, label, keywords.
     """
-
-    # --- Generate keywords for this cluster ---
     keywords = get_cluster_keywords(
         article_indices = article_indices,
         tfidf_matrix    = tfidf_matrix,
         vectorizer      = vectorizer,
-        top_n           = TOP_KEYWORDS_COUNT
+        top_n           = TOP_KEYWORDS_COUNT,
     )
 
     if not keywords:
-        logger.warning(f"No keywords found for cluster {cluster_label}, skipping")
-        return 0
+        logger.warning(f"No keywords for cluster {cluster_label}")
+        return {"saved": False}
 
-    # --- Generate human-readable label ---
-    label = generate_cluster_label(keywords)
-
-    # --- Get date range of articles in this cluster ---
+    label       = generate_cluster_label(keywords)
     earliest_at, latest_at = _get_date_range(article_indices, articles)
+    sim_scores  = _compute_similarity_scores(article_indices, similarity_matrix)
 
-    # --- Compute similarity scores for each article ---
-    # Score = average similarity to all other articles in the cluster
-    similarity_scores = _compute_similarity_scores(
-        article_indices, similarity_matrix
-    )
-
-    # --- Insert cluster record ---
     db_cluster_id = insert_cluster(
         label         = label,
         keywords      = keywords,
         article_count = len(article_indices),
         run_id        = run_id,
         earliest_at   = earliest_at,
-        latest_at     = latest_at
+        latest_at     = latest_at,
+        ai_summary    = None,   # filled in after batch summarization
     )
 
-    # --- Insert cluster_items (article memberships) ---
     cluster_items = [
         {
             "cluster_id"      : db_cluster_id,
             "article_id"      : articles[idx]["id"],
-            "similarity_score": similarity_scores.get(idx, None)
+            "similarity_score": sim_scores.get(idx, None),
         }
         for idx in article_indices
         if idx < len(articles)
@@ -289,56 +243,46 @@ def _save_cluster(
 
     insert_cluster_items(cluster_items)
 
-    logger.info(
-        f"  Saved cluster '{label}' — "
-        f"{len(article_indices)} articles, "
-        f"keywords: {keywords[:3]}"
-    )
+    logger.info(f"  Saved '{label}' — {len(article_indices)} articles")
 
-    return 1
+    return {
+        "saved"   : True,
+        "db_id"   : db_cluster_id,
+        "label"   : label,
+        "keywords": keywords,
+    }
 
 
 def _get_date_range(
     article_indices: List[int],
-    articles: List[dict]
+    articles       : List[dict],
 ) -> Tuple[Optional[datetime], Optional[datetime]]:
-    """Get earliest and latest published_at dates for a cluster."""
+    """Get earliest and latest published_at for a cluster."""
     dates = []
-
     for idx in article_indices:
         if idx < len(articles):
-            pub_date = articles[idx].get("published_at")
-            if pub_date:
-                dates.append(pub_date)
-
+            pub = articles[idx].get("published_at")
+            if pub:
+                dates.append(pub)
     if not dates:
         return None, None
-
     return min(dates), max(dates)
 
 
 def _compute_similarity_scores(
-    article_indices: List[int],
-    similarity_matrix: np.ndarray
+    article_indices  : List[int],
+    similarity_matrix: np.ndarray,
 ) -> Dict[int, float]:
     """
     Compute each article's average similarity to others in the cluster.
-
-    Higher score = more representative of the cluster topic.
-    This is used to sort articles within a cluster (most relevant first).
+    Higher = more representative of the cluster topic.
     """
     scores = {}
-
     for idx in article_indices:
-        # Get similarities to all other articles in the cluster
-        other_indices = [i for i in article_indices if i != idx]
-
-        if not other_indices:
+        others = [i for i in article_indices if i != idx]
+        if not others:
             scores[idx] = 1.0
             continue
-
-        # Average similarity to all cluster members
-        cluster_sims = [similarity_matrix[idx][other] for other in other_indices]
-        scores[idx] = float(np.mean(cluster_sims))
-
+        sims       = [similarity_matrix[idx][o] for o in others]
+        scores[idx] = float(np.mean(sims))
     return scores

@@ -1,14 +1,7 @@
 // =============================================================================
 // types/index.ts — Shared TypeScript Types
 // =============================================================================
-// Single source of truth for all data shapes in the frontend.
-// These mirror exactly what the Express API returns.
-// =============================================================================
 
-
-// -----------------------------------------------------------------------------
-// Article
-// -----------------------------------------------------------------------------
 export interface Article {
   id             : number
   title          : string
@@ -20,10 +13,6 @@ export interface Article {
   similarityScore: number | null
 }
 
-
-// -----------------------------------------------------------------------------
-// Cluster
-// -----------------------------------------------------------------------------
 export interface Cluster {
   id          : number
   label       : string
@@ -35,20 +24,13 @@ export interface Cluster {
     end  : string | null
   }
   createdAt   : string
+  aiSummary   : string | null    // ← AI summary field
 }
 
-
-// -----------------------------------------------------------------------------
-// Cluster Detail (includes articles)
-// -----------------------------------------------------------------------------
 export interface ClusterDetail extends Cluster {
   articles: Article[]
 }
 
-
-// -----------------------------------------------------------------------------
-// Timeline Item (vis-timeline format)
-// -----------------------------------------------------------------------------
 export interface TimelineItem {
   id       : number
   content  : string
@@ -65,20 +47,12 @@ export interface TimelineItem {
   }
 }
 
-
-// -----------------------------------------------------------------------------
-// Timeline Group (vis-timeline format)
-// -----------------------------------------------------------------------------
 export interface TimelineGroup {
   id       : NewsSource | 'unknown'
   content  : string
   className: string
 }
 
-
-// -----------------------------------------------------------------------------
-// API Responses
-// -----------------------------------------------------------------------------
 export interface PaginationMeta {
   total     : number
   page      : number
@@ -146,20 +120,20 @@ export interface HealthResponse {
   }
 }
 
-
-// -----------------------------------------------------------------------------
-// Enums / Union Types
-// -----------------------------------------------------------------------------
-export type NewsSource = 'bbc' | 'reuters' | 'npr' | 'unknown'
+export type NewsSource =
+  | 'bbc'
+  | 'reuters'
+  | 'npr'
+  | 'guardian'
+  | 'aljazeera'
+  | 'techcrunch'
+  | 'hackernews'
+  | 'ap'
+  | 'unknown'
 
 export type SourceFilter = NewsSource | 'all'
+export type JobStatus    = 'pending' | 'running' | 'completed' | 'failed'
 
-export type JobStatus = 'pending' | 'running' | 'completed' | 'failed'
-
-
-// -----------------------------------------------------------------------------
-// UI State Types
-// -----------------------------------------------------------------------------
 export interface FilterState {
   source: SourceFilter
   days  : number

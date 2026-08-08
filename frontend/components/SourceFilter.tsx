@@ -18,7 +18,7 @@ const SOURCES: {
 }[] = [
   {
     value : 'all',
-    label : 'All Sources',
+    label : 'All',
     emoji : '🌐',
     color : 'bg-gray-800 text-gray-300 border-gray-700 hover:border-gray-500',
     active: 'bg-gray-700 text-white border-gray-500',
@@ -31,11 +31,18 @@ const SOURCES: {
     active: 'bg-red-950 text-red-200 border-red-700',
   },
   {
-    value : 'reuters',
-    label : 'Reuters',
-    emoji : '📰',
-    color : 'bg-gray-800 text-orange-300 border-gray-700 hover:border-orange-700',
-    active: 'bg-orange-950 text-orange-200 border-orange-700',
+    value : 'guardian',
+    label : 'Guardian',
+    emoji : '🔵',
+    color : 'bg-gray-800 text-blue-300 border-gray-700 hover:border-blue-700',
+    active: 'bg-blue-950 text-blue-200 border-blue-700',
+  },
+  {
+    value : 'aljazeera',
+    label : 'Al Jazeera',
+    emoji : '🌍',
+    color : 'bg-gray-800 text-yellow-300 border-gray-700 hover:border-yellow-700',
+    active: 'bg-yellow-950 text-yellow-200 border-yellow-700',
   },
   {
     value : 'npr',
@@ -43,6 +50,27 @@ const SOURCES: {
     emoji : '🎙️',
     color : 'bg-gray-800 text-blue-300 border-gray-700 hover:border-blue-700',
     active: 'bg-blue-950 text-blue-200 border-blue-700',
+  },
+  {
+    value : 'techcrunch',
+    label : 'TechCrunch',
+    emoji : '💻',
+    color : 'bg-gray-800 text-green-300 border-gray-700 hover:border-green-700',
+    active: 'bg-green-950 text-green-200 border-green-700',
+  },
+  {
+    value : 'hackernews',
+    label : 'HN',
+    emoji : '🟠',
+    color : 'bg-gray-800 text-orange-300 border-gray-700 hover:border-orange-700',
+    active: 'bg-orange-950 text-orange-200 border-orange-700',
+  },
+  {
+    value : 'ap',
+    label : 'AP',
+    emoji : '📡',
+    color : 'bg-gray-800 text-purple-300 border-gray-700 hover:border-purple-700',
+    active: 'bg-purple-950 text-purple-200 border-purple-700',
   },
 ]
 
