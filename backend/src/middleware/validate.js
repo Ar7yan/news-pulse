@@ -1,18 +1,6 @@
 // =============================================================================
 // validate.js — Request Validation Middleware using Joi
 // =============================================================================
-// WHY VALIDATE REQUESTS?
-// Never trust user input. Validate everything before it hits your database.
-// Joi lets us define schemas and validate req.params/query/body against them.
-//
-// USAGE in routes:
-//   const { validate, schemas } = require('../middleware/validate');
-//
-//   router.get('/:id',
-//     validate(schemas.clusterId, 'params'),
-//     clusterController.getById
-//   );
-// =============================================================================
 
 const Joi = require('joi');
 const { ValidationError } = require('./errorHandler');
@@ -21,6 +9,7 @@ const { ValidationError } = require('./errorHandler');
 // Validation Schemas
 // -----------------------------------------------------------------------------
 const schemas = {
+
   // Validate cluster ID in URL params (/clusters/123)
   clusterId: Joi.object({
     id: Joi.number()
@@ -42,7 +31,7 @@ const schemas = {
       .positive()
       .required()
       .messages({
-        'number.base': 'Job ID must be a number',
+        'number.base' : 'Job ID must be a number',
         'any.required': 'Job ID is required',
       }),
   }),
@@ -50,7 +39,11 @@ const schemas = {
   // Validate query params for /clusters
   clusterQuery: Joi.object({
     source: Joi.string()
-      .valid('bbc', 'reuters', 'npr', 'all')
+      .valid(
+        'bbc', 'reuters', 'npr',
+        'guardian', 'aljazeera', 'techcrunch',
+        'hackernews', 'ap', 'unknown', 'all'
+      )
       .default('all'),
     limit: Joi.number()
       .integer()
@@ -66,7 +59,11 @@ const schemas = {
   // Validate query params for /timeline
   timelineQuery: Joi.object({
     source: Joi.string()
-      .valid('bbc', 'reuters', 'npr', 'all')
+      .valid(
+        'bbc', 'reuters', 'npr',
+        'guardian', 'aljazeera', 'techcrunch',
+        'hackernews', 'ap', 'unknown', 'all'
+      )
       .default('all'),
     days: Joi.number()
       .integer()
@@ -74,6 +71,7 @@ const schemas = {
       .max(30)
       .default(7),
   }),
+
 };
 
 // -----------------------------------------------------------------------------
@@ -83,13 +81,12 @@ const schemas = {
 function validate(schema, target = 'params') {
   return (req, res, next) => {
     const { error, value } = schema.validate(req[target], {
-      abortEarly : false,  // Return ALL errors, not just the first one
-      stripUnknown: true,  // Remove unknown fields silently
-      convert    : true,   // Convert strings to numbers where needed
+      abortEarly  : false,  // Return ALL errors, not just the first one
+      stripUnknown: true,   // Remove unknown fields silently
+      convert     : true,   // Convert strings to numbers where needed
     });
 
     if (error) {
-      // Combine all validation error messages
       const message = error.details
         .map(d => d.message)
         .join(', ');
@@ -97,7 +94,6 @@ function validate(schema, target = 'params') {
       return next(new ValidationError(message));
     }
 
-    // Replace req[target] with validated + converted values
     req[target] = value;
     next();
   };
